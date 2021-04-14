@@ -24,7 +24,7 @@ type APP interface {
 }
 
 func DingDing(h func(t string, s chan string, r chan string, l zerolog.Logger)) gin.HandlerFunc {
-	var talking bool = false
+	var talkto string = ""
 
 	return func(c *gin.Context) {
 		command := ddapp.request(c)
@@ -35,21 +35,25 @@ func DingDing(h func(t string, s chan string, r chan string, l zerolog.Logger)) 
 			Str("sender", ddapp.sender).
 			Logger()
 
-		if talking && command == "取消" {
-			// TODO 协程需要增加超时退出机制
-			Sender <- ""
-		} else if talking {
-			Reply <- command
+		if len(talkto) > 0 {
+			if command == "取消" {
+				// TODO 协程需要增加超时退出机制
+				Sender <- ""
+			} else if ddapp.sender != talkto {
+				Sender <- "上一个任务还未完成，请不要打扰我，如果需要取消，请回复“取消”"
+			} else {
+				Reply <- command
+			}
 		} else {
 			go func() {
 				for {
 					msg := <-Sender
 					if msg == "" {
-						talking = false
+						talkto = ""
 						log.Info().Msg("talk end")
 						break
 					} else {
-						talking = true
+						talkto = ddapp.sender
 						ddapp.notify(msg)
 					}
 				}
