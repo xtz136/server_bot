@@ -21,7 +21,6 @@ var ctx = context.Background()
 
 type System struct {
 	Name           string `json:"name"`
-	RedisURL       string `json:"redis_url"`
 	LockIP         string `json:"lock_ip"`
 	ListUserSystem string `json:"list_user_system"`
 	MakeToken      string `json:"make_token"`
@@ -59,10 +58,10 @@ func dummy(systemName string, sender chan string, reply chan string, logger zero
 func restart(systemName string, sender chan string, reply chan string, logger zerolog.Logger) {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
-	sender <- "开始重启阿里云，耐心等待"
-
 	b := System{}
 	viper.UnmarshalKey("systems."+systemName, &b)
+
+	sender <- fmt.Sprintf("开始重启%s，耐心等待", b.Name)
 
 	if len(b.Restart) == 0 {
 		logger.Info().Msg("system name is invalid")
@@ -71,7 +70,7 @@ func restart(systemName string, sender chan string, reply chan string, logger ze
 
 	bT := time.Now()
 	client := http.Client{
-		Timeout: 1 * time.Second,
+		Timeout: 5 * time.Second,
 	}
 
 	raiseError := func() {
@@ -95,13 +94,22 @@ func restart(systemName string, sender chan string, reply chan string, logger ze
 		// 循环100次，每次3秒，一共5分钟
 		has_error := true
 		for i := 0; i < 100; i++ {
-			_, err := client.Get(check)
+			resp, err := client.Get(check)
 			if err != nil {
 				time.Sleep(time.Duration(3) * time.Second)
 				continue
 			}
-			has_error = false
-			break
+
+			if resp.StatusCode == 200 {
+				has_error = false
+				break
+			} else if resp.StatusCode == 200 {
+				has_error = false
+				break
+			} else {
+				time.Sleep(time.Duration(3) * time.Second)
+				continue
+			}
 		}
 
 		if has_error {
@@ -125,6 +133,7 @@ func enableUser(systemName string, sender chan string, reply chan string, logger
 }
 
 func allowIP(systemName string, sender chan string, reply chan string, logger zerolog.Logger) {
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	lockIP := viper.GetString("systems." + systemName + ".lock_ip")
 
 	// 获取所有被封的IP
@@ -206,11 +215,20 @@ type Token struct {
 }
 
 func loginUser(systemName string, sender chan string, reply chan string, logger zerolog.Logger) {
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	tokenList := viper.GetString("systems." + systemName + ".list_user_system")
 	tokenMake := viper.GetString("systems." + systemName + ".make_token")
 
-	sender <- "请回复登录账号，同时回复申请原因(用空格隔开)。例如：\n\nxiaoming 火箭升空演示，需要测试推进系统"
-	accountAndWhy := strings.SplitN(<-reply, " ", 2)
+	var accountAndWhy []string
+	for {
+		sender <- "请回复登录账号，同时回复申请原因(用空格隔开)。例如：\n\nxiaoming 火箭升空演示，需要测试推进系统"
+		accountAndWhy = strings.SplitN(<-reply, " ", 2)
+		if len(accountAndWhy) != 2 {
+			sender <- "回复有误，请重新输入"
+		}
+		break
+	}
+
 	account := accountAndWhy[0]
 	why := accountAndWhy[1]
 

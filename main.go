@@ -12,8 +12,8 @@ var EnableConfig = initConfig()
 var Log = getLog()
 var ddapp = DingDingAPP{}
 
-var Sender = make(chan string)
-var Reply = make(chan string)
+// var Sender = make(chan string)
+// var Reply = make(chan string)
 
 type Notify func(t string)
 
@@ -23,9 +23,26 @@ type APP interface {
 	Notify()
 }
 
-func DingDing(h func(t string, s chan string, r chan string, l zerolog.Logger)) gin.HandlerFunc {
-	var talkto string = ""
+var Talks = map[string][]chan string{}
 
+func createTaskSession() (chan string, chan string) {
+	sender := make(chan string)
+	reply := make(chan string)
+	return sender, reply
+}
+
+func continueTaskSession(sender string) (bool, chan string, chan string) {
+	for name := range Talks {
+		if name == sender {
+			return false, Talks[name][0], Talks[name][1]
+		}
+	}
+
+	a, b := createTaskSession()
+	return true, a, b
+}
+
+func DingDing(h func(t string, s chan string, r chan string, l zerolog.Logger)) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		command := ddapp.request(c)
 		log := Log.With().
@@ -35,30 +52,37 @@ func DingDing(h func(t string, s chan string, r chan string, l zerolog.Logger)) 
 			Str("sender", ddapp.sender).
 			Logger()
 
-		if len(talkto) > 0 {
-			if command == "取消" {
-				// TODO 协程需要增加超时退出机制
-				Sender <- ""
-			} else if ddapp.sender != talkto {
-				Sender <- "上一个任务还未完成，请不要打扰我，如果需要取消，请回复“取消”"
-			} else {
-				Reply <- command
-			}
-		} else {
+		isFirst, sender, reply := continueTaskSession(ddapp.sender)
+
+		if isFirst {
+			// select {
+			// case msg, ok := (<-sender):
+			// 	if ok {
+			// 		ddapp.notify(msg)
+			// 	}else{
+			// 		log.Info().Msg("talk end")
+			// 		break
+			// 	}
+			// }
 			go func() {
 				for {
-					msg := <-Sender
+					msg := <-sender
 					if msg == "" {
-						talkto = ""
 						log.Info().Msg("talk end")
 						break
 					} else {
-						talkto = ddapp.sender
 						ddapp.notify(msg)
 					}
 				}
 			}()
-			h(command, Sender, Reply, log)
+			h(command, sender, reply, log)
+		} else {
+			if command == "取消" {
+				// TODO 协程需要增加超时退出机制
+				sender <- ""
+			} else {
+				reply <- command
+			}
 		}
 	}
 }
@@ -67,22 +91,24 @@ func Talk(command string, sender chan string, reply chan string, log zerolog.Log
 
 	switch command {
 	case "重启阿里云":
-		go restart("aly", sender, reply, log)
+		go restart("阿里云", sender, reply, log)
+	case "重启长沙":
+		go restart("长沙", sender, reply, log)
 	case "启用阿里云用户":
-		go enableUser("aly", sender, reply, log)
+		go enableUser("阿里云", sender, reply, log)
 	case "解封阿里云IP限制":
-		go allowIP("aly", sender, reply, log)
+		go allowIP("阿里云", sender, reply, log)
 	case "使用阿里云用户登录":
-		go loginUser("aly", sender, reply, log)
+		go loginUser("阿里云", sender, reply, log)
 	case "测试":
-		go dummy("xx系统", sender, reply, log)
+		go dummy("测试", sender, reply, log)
 	default:
 		helpMsg := `命令列表：
-		1. 帮助
-		2. 重启阿里云
-		3. 启用阿里云用户
-		4. 解封阿里云IP限制
-		5. 使用阿里云用户登录
+		*. 帮助
+		*. 重启阿里云
+		*. 重启长沙
+		*. 启用阿里云用户
+		*. 解封阿里云IP限制
 		`
 		makeTalkEnd(sender, helpMsg)
 	}

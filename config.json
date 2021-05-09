@@ -1,8 +1,7 @@
 {
     "systems": {
-        "aly": {
+        "阿里云": {
             "name": "阿里云",
-            "redis_url": "redis://localhost:6379/1",
             "lock_ip": "http://localhost:8800/account/lock/ip?access_token=603ce430deac0b3e52ec5b2f",
             "list_user_system": "http://localhost:8800/account/token/list?access_token=603ce430deac0b3e52ec5b2f",
             "make_token": "http://localhost:8800/account/token/make?access_token=603ce430deac0b3e52ec5b2f",
