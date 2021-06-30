@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bot/services"
 	"fmt"
+	"runtime"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
@@ -39,7 +42,18 @@ func continueTaskSession(sender string) (bool, chan string, chan string) {
 	}
 
 	a, b := createTaskSession()
+	Talks[sender] = []chan string{
+		a, b,
+	}
 	return true, a, b
+}
+
+func closeTaskSession(sender string) {
+	for name := range Talks {
+		if name == sender {
+			delete(Talks, name)
+		}
+	}
 }
 
 func DingDing(h func(t string, s chan string, r chan string, l zerolog.Logger)) gin.HandlerFunc {
@@ -53,64 +67,80 @@ func DingDing(h func(t string, s chan string, r chan string, l zerolog.Logger)) 
 			Logger()
 
 		isFirst, sender, reply := continueTaskSession(ddapp.sender)
+		log.Info().Bool("isFirst", isFirst).Msg("got request")
 
-		if isFirst {
-			// select {
-			// case msg, ok := (<-sender):
-			// 	if ok {
-			// 		ddapp.notify(msg)
-			// 	}else{
-			// 		log.Info().Msg("talk end")
-			// 		break
-			// 	}
-			// }
-			go func() {
-				for {
-					msg := <-sender
-					if msg == "" {
-						log.Info().Msg("talk end")
-						break
-					} else {
-						ddapp.notify(msg)
-					}
-				}
-			}()
-			h(command, sender, reply, log)
-		} else {
+		// 会话中
+		if !isFirst {
 			if command == "取消" {
-				// TODO 协程需要增加超时退出机制
-				sender <- ""
+				close(sender)
+				close(reply)
+				closeTaskSession(ddapp.sender)
 			} else {
 				reply <- command
 			}
+			return
 		}
+
+		// 开始会话
+		// TODO 协程需要增加超时退出机制
+		go func(sender chan string, reply chan string) {
+			for {
+				select {
+				case msg, ok := <-sender:
+					if ok {
+						ddapp.notify(msg)
+					} else {
+						close(reply)
+						closeTaskSession(ddapp.sender)
+						log.Info().Msg("talk end")
+						return
+					}
+				}
+			}
+		}(sender, reply)
+		h(command, sender, reply, log)
 	}
 }
 
 func Talk(command string, sender chan string, reply chan string, log zerolog.Logger) {
 
+	ctx := services.Task{
+		"",
+		sender,
+		reply,
+		log,
+	}
+
+	if strings.HasPrefix(command, "重启") {
+		go services.Restart(command[6:], sender, reply, log)
+		return
+	}
+
 	switch command {
-	case "重启阿里云":
-		go restart("阿里云", sender, reply, log)
-	case "重启长沙":
-		go restart("长沙", sender, reply, log)
 	case "启用阿里云用户":
-		go enableUser("阿里云", sender, reply, log)
+		go services.EnableUser("阿里云", sender, reply, log)
 	case "解封阿里云IP限制":
-		go allowIP("阿里云", sender, reply, log)
+		go services.AllowIP("阿里云", sender, reply, log)
 	case "使用阿里云用户登录":
-		go loginUser("阿里云", sender, reply, log)
+		go services.LoginUser("阿里云", sender, reply, log)
 	case "测试":
-		go dummy("测试", sender, reply, log)
+		ctx.Name = "测试"
+		go services.Dummy(ctx)
+	case "获取会话数":
+		services.MakeTalkEnd(sender, fmt.Sprintf("%d", runtime.NumGoroutine()))
 	default:
-		helpMsg := `命令列表：
-		*. 帮助
-		*. 重启阿里云
-		*. 重启长沙
-		*. 启用阿里云用户
-		*. 解封阿里云IP限制
-		`
-		makeTalkEnd(sender, helpMsg)
+		helpMsg := "命令列表：\n"
+		helpMsg += "* 帮助\n"
+
+		// 重启服务器动态读取配置文件
+		for _, k := range services.ListServices() {
+			helpMsg += "* 重启" + k + "\n"
+		}
+
+		helpMsg += "* 启用阿里云用户\n"
+		helpMsg += "* 解封阿里云IP限制"
+
+		services.MakeTalkEnd(sender, helpMsg)
 	}
 }
 
