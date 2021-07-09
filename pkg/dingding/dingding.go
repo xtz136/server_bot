@@ -1,6 +1,7 @@
-package main
+package dingding
 
 import (
+	"bot/pkg/logging"
 	"strings"
 
 	"bytes"
@@ -47,11 +48,11 @@ type DingDingResponse struct {
 }
 
 type DingDingAPP struct {
-	notifyUrl string
-	sender    string
+	NotifyUrl string
+	Sender    string
 }
 
-func (dd *DingDingAPP) request(c *gin.Context) string {
+func (dd *DingDingAPP) Request(c *gin.Context) string {
 
 	// by test
 	// jsonData, _ := ioutil.ReadAll(c.Request.Body)
@@ -60,12 +61,12 @@ func (dd *DingDingAPP) request(c *gin.Context) string {
 	rq := DingDingRequest{}
 	c.BindJSON(&rq)
 
-	dd.notifyUrl = rq.Sessionwebhook
-	dd.sender = rq.Sendernick
+	dd.NotifyUrl = rq.Sessionwebhook
+	dd.Sender = rq.Sendernick
 	return strings.TrimSpace(rq.Text.Content)
 }
 
-func (dd DingDingAPP) response(text string) DingDingResponse {
+func (dd DingDingAPP) Response(text string) DingDingResponse {
 	rs := DingDingResponse{}
 	rs.Msgtype = "text"
 	rs.Text.Content = text
@@ -73,11 +74,11 @@ func (dd DingDingAPP) response(text string) DingDingResponse {
 	return rs
 }
 
-func (dd DingDingAPP) notify(text string) {
-	data := dd.response(text)
+func (dd DingDingAPP) Notify(text string) {
+	data := dd.Response(text)
 	dataJson, _ := json.Marshal(data)
 
-	Log.Debug().
+	logging.Log.Debug().
 		Str("app", "dingding").
 		Str("text", text).
 		Msg("notify")
@@ -89,7 +90,7 @@ func (dd DingDingAPP) notify(text string) {
 		Transport: PTransport,
 	}
 
-	resp, err := client.Post(dd.notifyUrl, "application/json", bytes.NewBuffer(dataJson))
+	resp, err := client.Post(dd.NotifyUrl, "application/json", bytes.NewBuffer(dataJson))
 	if err != nil {
 		panic(err)
 	}

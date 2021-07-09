@@ -1,4 +1,4 @@
-package main
+package logging
 
 import (
 	"io"
@@ -12,7 +12,9 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-func getLog() zerolog.Logger {
+var Log zerolog.Logger
+
+func GetLog() zerolog.Logger {
 	writers := []io.Writer{}
 
 	if viper.GetBool("log.enable_console") {
@@ -39,7 +41,8 @@ func getLog() zerolog.Logger {
 	}
 
 	multi := zerolog.MultiLevelWriter(writers...)
-	return zerolog.New(multi).With().Timestamp().Logger()
+	log := zerolog.New(multi).With().Timestamp().Logger()
+	return log
 }
 
 func rollingFile(dir string, filename string) io.Writer {
@@ -52,4 +55,8 @@ func rollingFile(dir string, filename string) io.Writer {
 		Filename: path.Join(dir, filename),
 		MaxAge:   30,
 	}
+}
+
+func InitLog() {
+	Log = GetLog()
 }

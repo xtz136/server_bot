@@ -15,6 +15,10 @@
 # air temp file
 tmp/
 
+# config file
+config.json
+
 # Dependency directories (remove the comment below to include it)
 # vendor/
 bot
+.vscode

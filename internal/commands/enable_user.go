@@ -1,4 +1,4 @@
-package services
+package commands
 
 import "github.com/rs/zerolog"
 

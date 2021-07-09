@@ -14,7 +14,7 @@
         }
     },
     "log": {
-        "level": 1,
+        "level": 0,
         "enable_console": true,
         "enable_file": false,
         "log_file_dir": "./logs",
