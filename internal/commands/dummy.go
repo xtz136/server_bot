@@ -27,6 +27,6 @@ func Dummy(ctx Context) {
 
 	if w.start() {
 		eT := w.getCostTime()
-		MakeTalkEnd(ctx.Sender, fmt.Sprintf("测试结束，耗时：%v，本次服务结束", eT))
+		ctx.MakeTalkEnd(ctx.Sender, fmt.Sprintf("测试结束，耗时：%v，本次服务结束", eT))
 	}
 }

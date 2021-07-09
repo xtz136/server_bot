@@ -14,6 +14,7 @@ type Context = struct {
 	Reply  chan string
 	Log    zerolog.Logger
 	State  State
+	MakeTalkEnd func(chan string, string)
 }
 
 type System struct {
@@ -33,15 +34,6 @@ type LockIPResponse struct {
 	Message string   `json:"message"`
 	Data    []string `json:"data"`
 	ReqID   string   `json:"req_id"`
-}
-
-func MakeTalkEnd(sender chan string, lastMsg string) {
-	if lastMsg != "" {
-		sender <- lastMsg
-	}
-
-	time.Sleep(time.Duration(1) * time.Second)
-	close(sender)
 }
 
 type UserSystem struct {

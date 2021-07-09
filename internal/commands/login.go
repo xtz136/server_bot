@@ -9,21 +9,20 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/rs/zerolog"
 	"github.com/spf13/viper"
 )
 
-func LoginUser(systemName string, sender chan string, reply chan string, logger zerolog.Logger) {
+func LoginUser(ctx Context) {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	tokenList := viper.GetString("systems." + systemName + ".list_user_system")
-	tokenMake := viper.GetString("systems." + systemName + ".make_token")
+	tokenList := viper.GetString("systems." + ctx.Name + ".list_user_system")
+	tokenMake := viper.GetString("systems." + ctx.Name + ".make_token")
 
 	var accountAndWhy []string
 	for {
-		sender <- "请回复登录账号，同时回复申请原因(用空格隔开)。例如：\n\nxiaoming 火箭升空演示，需要测试推进系统"
-		accountAndWhy = strings.SplitN(<-reply, " ", 2)
+		ctx.Sender <- "请回复登录账号，同时回复申请原因(用空格隔开)。例如：\n\nxiaoming 火箭升空演示，需要测试推进系统"
+		accountAndWhy = strings.SplitN(<-ctx.Reply, " ", 2)
 		if len(accountAndWhy) != 2 {
-			sender <- "回复有误，请重新输入"
+			ctx.Sender <- "回复有误，请重新输入"
 		}
 		break
 	}
@@ -32,15 +31,15 @@ func LoginUser(systemName string, sender chan string, reply chan string, logger 
 	why := accountAndWhy[1]
 
 	if account == "" || why == "" {
-		MakeTalkEnd(sender, "回复有误，本次服务结束")
+		ctx.MakeTalkEnd(ctx.Sender, "回复有误，本次服务结束")
 		return
 	}
 
 	// 找到这个用户绑定的所有系统
 	resp, err := http.Get(tokenList + "&account=" + account)
 	if err != nil {
-		logger.Error().Err(err).Str("url", tokenList).Msg("list user system")
-		MakeTalkEnd(sender, "")
+		ctx.Log.Error().Err(err).Str("url", tokenList).Msg("list user system")
+		ctx.MakeTalkEnd(ctx.Sender, "")
 		return
 	}
 	defer resp.Body.Close()
@@ -51,7 +50,7 @@ func LoginUser(systemName string, sender chan string, reply chan string, logger 
 
 	// 不需要处理，结束
 	if len(userSystem.Data) == 0 {
-		MakeTalkEnd(sender, "这个用户没有绑定系统，本次服务结束")
+		ctx.MakeTalkEnd(ctx.Sender, "这个用户没有绑定系统，本次服务结束")
 		return
 	}
 
@@ -60,14 +59,14 @@ func LoginUser(systemName string, sender chan string, reply chan string, logger 
 	for i, item := range userSystem.Data {
 		query += fmt.Sprintf("%d. [%s][%s][%s]\n", i, item.UserAlias, item.SystemAlias, item.DanweiParentAlias)
 	}
-	sender <- query
+	ctx.Sender <- query
 	var index int
 
 	for {
-		answer := <-reply
+		answer := <-ctx.Reply
 		i, err := strconv.Atoi(answer)
 		if err != nil || i >= len(userSystem.Data) {
-			sender <- "选择错误，请重新选择!"
+			ctx.Sender <- "选择错误，请重新选择!"
 		} else {
 			index = i
 			break
@@ -85,16 +84,16 @@ func LoginUser(systemName string, sender chan string, reply chan string, logger 
 		}
 		resp, err := http.Get(tokenMake + "&" + params.Encode())
 		if err != nil {
-			logger.Error().Err(err).Str("url", tokenMake).Msg("make token")
-			MakeTalkEnd(sender, "")
+			ctx.Log.Error().Err(err).Str("url", tokenMake).Msg("make token")
+			ctx.MakeTalkEnd(ctx.Sender, "")
 			return
 		}
 		token := Token{}
 		json.NewDecoder(resp.Body).Decode(&token)
-		MakeTalkEnd(sender, fmt.Sprintf("访问下方链接(%s)即可登录,本次服务结束\n%s", token.Message, token.Data))
+		ctx.MakeTalkEnd(ctx.Sender, fmt.Sprintf("访问下方链接(%s)即可登录,本次服务结束\n%s", token.Message, token.Data))
 		defer resp.Body.Close()
 
-		logger.Info().
+		ctx.Log.Info().
 			Str("account", params.Get("account")).
 			Str("danwei_id", params.Get("danwei_id")).
 			Str("quanxian_id", params.Get("quanxian_id")).

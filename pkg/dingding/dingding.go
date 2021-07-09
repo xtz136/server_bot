@@ -2,12 +2,14 @@ package dingding
 
 import (
 	"bot/pkg/logging"
+	"bot/pkg/talk"
 	"strings"
 
 	"bytes"
 	"encoding/json"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
 
 	"net/http"
 )
@@ -95,4 +97,52 @@ func (dd DingDingAPP) Notify(text string) {
 		panic(err)
 	}
 	resp.Body.Close()
+}
+
+func DingDing(h func(t string, s chan string, r chan string, l zerolog.Logger)) gin.HandlerFunc {
+	ddapp := DingDingAPP{}
+
+	return func(c *gin.Context) {
+		command := ddapp.Request(c)
+		log := logging.Log.With().
+			Str("app", "dingding").
+			Str("module", "command").
+			Str("command", command).
+			Str("sender", ddapp.Sender).
+			Logger()
+
+		isFirst, sender, reply := talk.ContinueTaskSession(ddapp.Sender)
+		log.Info().Bool("isFirst", isFirst).Msg("got request")
+
+		// 会话中
+		if !isFirst {
+			if command == "取消" {
+				sender <- "取消成功"
+				close(sender)
+			} else {
+				reply <- command
+			}
+			return
+		}
+
+		// 开始会话
+		// TODO 协程需要增加超时退出机制
+		go func(sender chan string, reply chan string) {
+			for {
+				select {
+				case msg, ok := <-sender:
+					if ok {
+						ddapp.Notify(msg)
+					} else {
+						close(reply)
+						talk.CloseTaskSession(ddapp.Sender)
+						log.Info().Msg("talk end")
+						return
+					}
+				}
+			}
+		}(sender, reply)
+
+		h(command, sender, reply, log)
+	}
 }

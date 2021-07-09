@@ -6,22 +6,21 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/rs/zerolog"
 	"github.com/spf13/viper"
 )
 
-func Restart(systemName string, sender chan string, reply chan string, logger zerolog.Logger) {
+func Restart(ctx Context) {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	b := System{}
-	viper.UnmarshalKey("systems."+systemName, &b)
+	viper.UnmarshalKey("systems."+ctx.Name, &b)
 
 	if len(b.Restart) == 0 {
-		sender <- fmt.Sprintf("这个系统没有配置，请联系管理员")
+		ctx.Sender <- fmt.Sprintf("这个系统没有配置，请联系管理员")
 		return
 	}
 
-	sender <- fmt.Sprintf("开始重启%s，耐心等待", b.Name)
+	ctx.Sender <- fmt.Sprintf("开始重启%s，耐心等待", b.Name)
 
 	bT := time.Now()
 	client := http.Client{
@@ -30,7 +29,7 @@ func Restart(systemName string, sender chan string, reply chan string, logger ze
 
 	raiseError := func() {
 		eT := time.Since(bT)
-		MakeTalkEnd(sender, fmt.Sprintf("汪，重启%s失败，耗时: %v, 请联系管理员，本次服务结束", b.Name, eT))
+		ctx.MakeTalkEnd(ctx.Sender, fmt.Sprintf("汪，重启%s失败，耗时: %v, 请联系管理员，本次服务结束", b.Name, eT))
 		return
 	}
 
@@ -40,11 +39,11 @@ func Restart(systemName string, sender chan string, reply chan string, logger ze
 
 		_, err := client.Get(command)
 		if err != nil {
-			logger.Error().Err(err).Msg("")
+			ctx.Log.Error().Err(err).Msg("")
 			raiseError()
 			return
 		}
-		logger.Info().Str("request", command).Msg("run command")
+		ctx.Log.Info().Str("request", command).Msg("run command")
 
 		// 循环100次，每次3秒，一共5分钟
 		has_error := true
@@ -65,12 +64,12 @@ func Restart(systemName string, sender chan string, reply chan string, logger ze
 		}
 
 		if has_error {
-			logger.Warn().Msg("check failed")
+			ctx.Log.Warn().Msg("check failed")
 			raiseError()
 			return
 		}
 	}
 
 	eT := time.Since(bT)
-	MakeTalkEnd(sender, fmt.Sprintf("汪，重启%s完成，耗时：%v，本次服务结束", b.Name, eT))
+	ctx.MakeTalkEnd(ctx.Sender, fmt.Sprintf("汪，重启%s完成，耗时：%v，本次服务结束", b.Name, eT))
 }
