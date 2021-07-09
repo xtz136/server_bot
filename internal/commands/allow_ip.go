@@ -19,12 +19,13 @@ func AllowIP(ctx Context) {
 	// 获取所有被封的IP
 	w.add(func(ctx Context) bool {
 		resp, err := http.Get(lockIP)
-		defer resp.Body.Close()
 		if err != nil {
 			ctx.Log.Error().Err(err).Str("url", lockIP).Msg("get lock ip")
 			ctx.Sender <- ""
 			return false
 		}
+		defer resp.Body.Close()
+
 		lresp := LockIPResponse{}
 		json.NewDecoder(resp.Body).Decode(&lresp)
 		keys := lresp.Data
