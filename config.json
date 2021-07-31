@@ -19,5 +19,8 @@
         "enable_file": false,
         "log_file_dir": "./logs",
         "log_file_name": "bot.log"
+    },
+    "dingding": {
+        "app_secret": "yTv8YCto1I-qHPT7k-7Ru1vhM7ifkbBQv_6fi2OHSRRP5Jex7epx6iSGSY99vLa5"
     }
 }

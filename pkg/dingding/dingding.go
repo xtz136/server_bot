@@ -3,16 +3,29 @@ package dingding
 import (
 	"bot/pkg/logging"
 	"bot/pkg/talk"
+	"crypto/hmac"
+	"crypto/sha256"
+	"strconv"
 	"strings"
+	"time"
 
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
+	"github.com/spf13/viper"
 
 	"net/http"
 )
+
+func hmacSha256(data string, secret string) string {
+	h := hmac.New(sha256.New, []byte(secret))
+	h.Write([]byte(data))
+	sha := h.Sum(nil)
+	return base64.StdEncoding.EncodeToString(sha)
+}
 
 type DingDingRequest struct {
 	Conversationid string `json:"conversationId"`
@@ -52,6 +65,7 @@ type DingDingResponse struct {
 type DingDingAPP struct {
 	NotifyUrl string
 	Sender    string
+	appSecret string
 }
 
 func (dd *DingDingAPP) Request(c *gin.Context) string {
@@ -74,6 +88,29 @@ func (dd DingDingAPP) Response(text string) DingDingResponse {
 	rs.Text.Content = text
 	// rs.At.Atmobiles = []string{"13427692994"}
 	return rs
+}
+
+func (dd DingDingAPP) check(timestamp string, sign string) int {
+	t, err := strconv.ParseInt(timestamp, 10, 64)
+	if err != nil {
+		return 1
+	}
+
+	// 检查 timestamp
+	gap := time.Now().Unix() - t
+	if gap < 0 && gap > 86400 {
+		return 2
+	}
+
+	// 检查 sign
+	appSecret := dd.appSecret
+	string_to_sign := timestamp + "\n" + appSecret
+
+	if hmacSha256(string_to_sign, appSecret) != sign {
+		return 3
+	}
+
+	return 0
 }
 
 func (dd DingDingAPP) Notify(text string) {
@@ -100,7 +137,7 @@ func (dd DingDingAPP) Notify(text string) {
 }
 
 func DingDing(h func(t string, s chan string, r chan string, l zerolog.Logger)) gin.HandlerFunc {
-	ddapp := DingDingAPP{}
+	ddapp := DingDingAPP{appSecret: viper.GetString("dingding.app_secret")}
 
 	return func(c *gin.Context) {
 		command := ddapp.Request(c)
@@ -110,6 +147,15 @@ func DingDing(h func(t string, s chan string, r chan string, l zerolog.Logger)) 
 			Str("command", command).
 			Str("sender", ddapp.Sender).
 			Logger()
+
+		timestamp := c.Request.Header.Get("timestamp")
+		sign := c.Request.Header.Get("sign")
+		err := ddapp.check(timestamp, sign)
+		if err != 0 {
+			log.Debug().Str("timestamp", timestamp).Str("sign", sign).Int("err", err).Msg("非法操作")
+			ddapp.Notify("非法操作")
+			return
+		}
 
 		isFirst, sender, reply := talk.ContinueTaskSession(ddapp.Sender)
 		log.Info().Bool("isFirst", isFirst).Msg("got request")
