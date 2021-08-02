@@ -3,7 +3,6 @@ package main
 import (
 	"bot/internal/commands"
 	"bot/pkg/dingding"
-	"bot/pkg/logging"
 	"bot/pkg/talk"
 	"fmt"
 	"runtime"
@@ -11,20 +10,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
-	"github.com/spf13/viper"
 )
 
 type Notify func(t string)
-
-func initConfig() bool {
-	viper.SetConfigName("config")
-	viper.AddConfigPath(".")
-	if err := viper.ReadInConfig(); err != nil {
-		panic(fmt.Errorf("Fatal error config file: %s \n", err))
-	}
-
-	return true
-}
 
 func Talk(command string, sender chan string, reply chan string, log zerolog.Logger) {
 
@@ -75,9 +63,6 @@ func Talk(command string, sender chan string, reply chan string, log zerolog.Log
 }
 
 func main() {
-	initConfig()
-	logging.InitLog()
-
 	r := gin.Default()
 	r.POST("/bot/dingding/talk", dingding.DingDing(Talk))
 	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")

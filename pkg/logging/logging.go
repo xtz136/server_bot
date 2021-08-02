@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -57,6 +58,13 @@ func rollingFile(dir string, filename string) io.Writer {
 	}
 }
 
-func InitLog() {
+func init() {
+	// 暂时没有需要单独写一个配置文件模块，就把初始化放在这里吧
+	viper.SetConfigName("config")
+	viper.AddConfigPath(".")
+	if err := viper.ReadInConfig(); err != nil {
+		panic(fmt.Errorf("Fatal error config file: %s \n", err))
+	}
+
 	Log = GetLog()
 }

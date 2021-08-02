@@ -90,6 +90,7 @@ func (dd DingDingAPP) Response(text string) DingDingResponse {
 	return rs
 }
 
+// 验证钉钉接口是否可信，根据钉钉规范验证
 func (dd DingDingAPP) check(timestamp string, sign string) int {
 	t, err := strconv.ParseInt(timestamp, 10, 64)
 	if err != nil {
@@ -113,6 +114,7 @@ func (dd DingDingAPP) check(timestamp string, sign string) int {
 	return 0
 }
 
+// 给钉钉发送消息，目前只能发文本信息
 func (dd DingDingAPP) Notify(text string) {
 	data := dd.Response(text)
 	dataJson, _ := json.Marshal(data)
