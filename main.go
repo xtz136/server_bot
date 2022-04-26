@@ -12,18 +12,26 @@ import (
 	"github.com/rs/zerolog"
 )
 
-type Notify func(t string)
-
-func Talk(command string, sender chan string, reply chan string, log zerolog.Logger) {
-
+func Talk(command string, sender chan string, reply chan string, closeing chan int, log zerolog.Logger) {
 	ctx := commands.Context{
 		"",
 		sender,
 		reply,
+		closeing,
 		log,
 		make(commands.State),
 		talk.MakeTalkEnd,
 	}
+
+	go func(ctx commands.Context) {
+		select {
+		case <-ctx.Closeing:
+			close(ctx.Sender)
+			close(ctx.Reply)
+			return
+		default:
+		}
+	}(ctx)
 
 	if strings.HasPrefix(command, "重启") {
 		ctx.Name = command[6:]
@@ -65,5 +73,7 @@ func Talk(command string, sender chan string, reply chan string, log zerolog.Log
 func main() {
 	r := gin.Default()
 	r.POST("/bot/dingding/talk", dingding.DingDing(Talk))
+
+	go iter_check_health()
 	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 }

@@ -9,11 +9,12 @@ import (
 type State map[string]interface{}
 
 type Context = struct {
-	Name   string
-	Sender chan string
-	Reply  chan string
-	Log    zerolog.Logger
-	State  State
+	Name        string
+	Sender      chan string
+	Reply       chan string
+	Closeing    chan int
+	Log         zerolog.Logger
+	State       State
 	MakeTalkEnd func(chan string, string)
 }
 
@@ -26,6 +27,10 @@ type System struct {
 		Command string `json:"command"`
 		Check   string `json:"check"`
 	} `json:"restart"`
+	Health []struct {
+		Command string `json:"command"`
+		Check   string `json:"check"`
+	} `json:"health"`
 }
 
 type LockIPResponse struct {
@@ -62,14 +67,13 @@ type Token struct {
 	ReqID   string `json:"req_id"`
 }
 
-
 type stepFunc func(ctx Context) bool
 
 type WorkFlow struct {
-	ctx   Context
-	funcs []stepFunc
+	ctx       Context
+	funcs     []stepFunc
 	startTime time.Time
-	costTime time.Duration
+	costTime  time.Duration
 }
 
 func (this *WorkFlow) add(f stepFunc) {

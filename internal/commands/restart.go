@@ -3,6 +3,8 @@ package commands
 import (
 	"crypto/tls"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -22,8 +24,10 @@ func Restart(ctx Context) {
 
 	ctx.Sender <- fmt.Sprintf("开始重启%s，耐心等待", b.Name)
 
+	var client http.Client
+
 	bT := time.Now()
-	client := http.Client{
+	client = http.Client{
 		Timeout: 5 * time.Second,
 	}
 
@@ -37,12 +41,14 @@ func Restart(ctx Context) {
 		command := item.Command
 		check := item.Check
 
-		_, err := client.Get(command)
+		resp, err := client.Get(command)
 		if err != nil {
 			ctx.Log.Error().Err(err).Msg("")
 			raiseError()
 			return
 		}
+		io.Copy(ioutil.Discard, resp.Body)
+		resp.Body.Close()
 		ctx.Log.Info().Str("request", command).Msg("run command")
 
 		// 循环100次，每次3秒，一共5分钟
@@ -54,7 +60,10 @@ func Restart(ctx Context) {
 				continue
 			}
 
-			if resp.StatusCode == 200 {
+			code := resp.StatusCode
+			io.Copy(ioutil.Discard, resp.Body)
+			resp.Body.Close()
+			if code == 200 {
 				has_error = false
 				break
 			} else {

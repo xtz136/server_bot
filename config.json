@@ -10,6 +10,12 @@
                     "command": "http://localhost:8800/system/live?access_token=603ce430deac0b3e52ec5b2f",
                     "check": "http://localhost:8800/system/live?access_token=603ce430deac0b3e52ec5b2f"
                 }
+            ],
+            "health": [
+                {
+                    "command": "https://httpbin.org/get",
+                    "check": "http://localhost:8800/system/crash?access_token=603ce430deac0b3e52ec5b2f"
+                }
             ]
         }
     },

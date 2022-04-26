@@ -8,9 +8,6 @@ func Dummy(ctx Context) {
 	w := newWorkFlow(ctx)
 	w.add(func(ctx Context) bool {
 		ctx.Sender <- "有什么需要帮助吗"
-		return true
-	})
-	w.add(func(ctx Context) bool {
 		msg, ok := <-ctx.Reply
 		if ok {
 			ctx.Log.Info().Msg("got repl")

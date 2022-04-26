@@ -138,7 +138,7 @@ func (dd DingDingAPP) Notify(text string) {
 	resp.Body.Close()
 }
 
-func DingDing(h func(t string, s chan string, r chan string, l zerolog.Logger)) gin.HandlerFunc {
+func DingDing(h func(string, chan string, chan string, chan int, zerolog.Logger)) gin.HandlerFunc {
 	ddapp := DingDingAPP{appSecret: viper.GetString("dingding.app_secret")}
 
 	return func(c *gin.Context) {
@@ -162,11 +162,13 @@ func DingDing(h func(t string, s chan string, r chan string, l zerolog.Logger)) 
 		isFirst, sender, reply := talk.ContinueTaskSession(ddapp.Sender)
 		log.Info().Bool("isFirst", isFirst).Msg("got request")
 
+		closeing := make(chan int, 1)
+
 		// 会话中
 		if !isFirst {
 			if command == "取消" {
 				sender <- "取消成功"
-				close(sender)
+				close(closeing)
 			} else {
 				reply <- command
 			}
@@ -182,7 +184,7 @@ func DingDing(h func(t string, s chan string, r chan string, l zerolog.Logger)) 
 					if ok {
 						ddapp.Notify(msg)
 					} else {
-						close(reply)
+						close(closeing)
 						talk.CloseTaskSession(ddapp.Sender)
 						log.Info().Msg("talk end")
 						return
@@ -191,6 +193,6 @@ func DingDing(h func(t string, s chan string, r chan string, l zerolog.Logger)) 
 			}
 		}(sender, reply)
 
-		h(command, sender, reply, log)
+		h(command, sender, reply, closeing, log)
 	}
 }
