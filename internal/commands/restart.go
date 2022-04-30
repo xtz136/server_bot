@@ -1,81 +1,65 @@
 package commands
 
 import (
-	"crypto/tls"
+	"bot/pkg/http_client"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"net/http"
 	"time"
 
 	"github.com/spf13/viper"
 )
 
+// 重启进程/服务，需要预先配置检查链接和重启链接
+// 服务都是一个集群的，不应该同时重启，会被客户感知。
+// 需要按顺序重启多个服务，中间如果有错误，则会跳过错误的服务
 func Restart(ctx Context) {
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	b := System{}
 	viper.UnmarshalKey("systems."+ctx.Name, &b)
 
 	if len(b.Restart) == 0 {
-		ctx.Sender <- fmt.Sprintf("这个系统没有配置，请联系管理员")
+		ctx.Sender <- fmt.Sprintln("这个系统没有配置，请联系管理员")
 		return
 	}
 
 	ctx.Sender <- fmt.Sprintf("开始重启%s，耐心等待", b.Name)
 
-	var client http.Client
-
 	bT := time.Now()
-	client = http.Client{
-		Timeout: 5 * time.Second,
-	}
+	client := http_client.NewDumbHttpClient(5)
 
 	raiseError := func() {
 		eT := time.Since(bT)
 		ctx.MakeTalkEnd(ctx.Sender, fmt.Sprintf("汪，重启%s失败，耗时: %v, 请联系管理员，本次服务结束", b.Name, eT))
-		return
 	}
 
 	for _, item := range b.Restart {
 		command := item.Command
 		check := item.Check
 
-		resp, err := client.Get(command)
+		// 调用重启链接
+		_, err := http_client.Get(client, command)
 		if err != nil {
+			// 调用失败，打印错误，然后下一个
 			ctx.Log.Error().Err(err).Msg("")
 			raiseError()
 			return
 		}
-		io.Copy(ioutil.Discard, resp.Body)
-		resp.Body.Close()
 		ctx.Log.Info().Str("request", command).Msg("run command")
 
+		// 服务已经重启了，这里会每3秒检查一次，直到检查链接响应
 		// 循环100次，每次3秒，一共5分钟
-		has_error := true
-		for i := 0; i < 100; i++ {
-			resp, err := client.Get(check)
+		maxTry := 100
+		for i := 1; i <= maxTry; i++ {
+			_, err := http_client.Get(client, check)
 			if err != nil {
 				time.Sleep(time.Duration(3) * time.Second)
 				continue
 			}
-
-			code := resp.StatusCode
-			io.Copy(ioutil.Discard, resp.Body)
-			resp.Body.Close()
-			if code == 200 {
-				has_error = false
-				break
-			} else {
-				time.Sleep(time.Duration(3) * time.Second)
-				continue
+			if i == maxTry {
+				// 超过了5分钟，没有检查到服务响应，则认为服务重启失败
+				ctx.Log.Warn().Msg("check failed")
+				raiseError()
+				return
 			}
-		}
-
-		if has_error {
-			ctx.Log.Warn().Msg("check failed")
-			raiseError()
-			return
 		}
 	}
 

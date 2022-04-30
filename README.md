@@ -1,4 +1,4 @@
-# bot
+# server bot
 
 ## start dev mode
 

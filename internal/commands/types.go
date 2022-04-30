@@ -1,9 +1,12 @@
 package commands
 
 import (
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/spf13/viper"
 )
 
 type State map[string]interface{}
@@ -101,4 +104,16 @@ func newWorkFlow(ctx Context) WorkFlow {
 	w := WorkFlow{ctx: ctx}
 	w.startTime = time.Now()
 	return w
+}
+
+func init() {
+	viper.SetConfigName("config")
+	viper.AddConfigPath(".")
+	if err := viper.ReadInConfig(); err != nil {
+		path, err := os.Getwd()
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("fatal error config file %v in %v", err, path)
+	}
 }

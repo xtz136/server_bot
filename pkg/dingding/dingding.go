@@ -70,10 +70,6 @@ type DingDingAPP struct {
 
 func (dd *DingDingAPP) Request(c *gin.Context) string {
 
-	// by test
-	// jsonData, _ := ioutil.ReadAll(c.Request.Body)
-	// fmt.Printf("reqeust %v\n", string(jsonData))
-
 	rq := DingDingRequest{}
 	c.BindJSON(&rq)
 
@@ -86,7 +82,6 @@ func (dd DingDingAPP) Response(text string) DingDingResponse {
 	rs := DingDingResponse{}
 	rs.Msgtype = "text"
 	rs.Text.Content = text
-	// rs.At.Atmobiles = []string{"13427692994"}
 	return rs
 }
 
@@ -152,8 +147,7 @@ func DingDing(h func(string, chan string, chan string, chan int, zerolog.Logger)
 
 		timestamp := c.Request.Header.Get("timestamp")
 		sign := c.Request.Header.Get("sign")
-		err := ddapp.check(timestamp, sign)
-		if err != 0 {
+		if err := ddapp.check(timestamp, sign); err != 0 {
 			log.Debug().Str("timestamp", timestamp).Str("sign", sign).Int("err", err).Msg("非法操作")
 			ddapp.Notify("非法操作")
 			return
@@ -176,7 +170,6 @@ func DingDing(h func(string, chan string, chan string, chan int, zerolog.Logger)
 		}
 
 		// 开始会话
-		// TODO 协程需要增加超时退出机制
 		go func(sender chan string, reply chan string) {
 			for {
 				select {

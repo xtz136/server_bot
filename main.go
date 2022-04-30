@@ -3,6 +3,7 @@ package main
 import (
 	"bot/internal/commands"
 	"bot/pkg/dingding"
+	"bot/pkg/health"
 	"bot/pkg/talk"
 	"fmt"
 	"runtime"
@@ -74,6 +75,6 @@ func main() {
 	r := gin.Default()
 	r.POST("/bot/dingding/talk", dingding.DingDing(Talk))
 
-	go iter_check_health()
+	go health.BeatCheckHealth()
 	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 }

@@ -1,10 +1,9 @@
 package commands
 
 import (
-	"crypto/tls"
+	"bot/pkg/http_client"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strconv"
 
@@ -12,26 +11,26 @@ import (
 )
 
 func AllowIP(ctx Context) {
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	lockIP := viper.GetString("systems." + ctx.Name + ".lock_ip")
+	hc := http_client.NewHttpClient(3)
+	dhc := http_client.NewDumbHttpClient(3)
 	w := newWorkFlow(ctx)
 
 	// 获取所有被封的IP
 	w.add(func(ctx Context) bool {
-		resp, err := http.Get(lockIP)
+		respBody, err := http_client.Get(hc, lockIP)
 		if err != nil {
 			ctx.Log.Error().Err(err).Str("url", lockIP).Msg("get lock ip")
-			ctx.Sender <- ""
 			return false
 		}
-		defer resp.Body.Close()
 
 		lresp := LockIPResponse{}
-		json.NewDecoder(resp.Body).Decode(&lresp)
+		json.Unmarshal(respBody, &lresp)
+
 		keys := lresp.Data
 		// 不需要处理，结束
 		if len(keys) == 0 {
-			ctx.MakeTalkEnd(ctx.Sender, "没有需要解封的IP，本次服务结束")
+			ctx.Sender <- "没有需要解封的IP"
 			return false
 		}
 		ctx.State["keys"] = keys
@@ -53,6 +52,7 @@ func AllowIP(ctx Context) {
 				return false
 			}
 
+			// FIXME 最多重试次数，和超时时间
 			i, err := strconv.Atoi(answer)
 			if err != nil || i >= len(keys) {
 				ctx.Sender <- "选择错误，请重新选择!"
@@ -69,16 +69,16 @@ func AllowIP(ctx Context) {
 	w.add(func(ctx Context) bool {
 		keys := ctx.State["keys"].([]string)
 		choose := ctx.State["choose"].(int)
-
-		req, err := http.NewRequest("DELETE", lockIP+"&key="+url.QueryEscape(keys[choose]), nil)
-		if err != nil {
+		if _, err := http_client.Delete(dhc, lockIP+"&key="+url.QueryEscape(keys[choose])); err != nil {
 			ctx.Log.Error().Err(err).Msg("remove lock ip")
+			return false
 		}
-		http.DefaultClient.Do(req)
 		return true
 	})
 
 	if w.start() {
 		ctx.MakeTalkEnd(ctx.Sender, "解除限制成功，本次服务结束")
+	} else {
+		ctx.MakeTalkEnd(ctx.Sender, "解除限制失败，如有疑问请联系管理员，本次服务结束")
 	}
 }
