@@ -1,11 +1,10 @@
 package commands
 
 import (
+	"bot/pkg/config"
 	"bot/pkg/http_client"
 	"fmt"
 	"time"
-
-	"github.com/spf13/viper"
 )
 
 // 重启进程/服务，需要预先配置检查链接和重启链接
@@ -13,9 +12,7 @@ import (
 // 需要按顺序重启多个服务，中间如果有错误，则会跳过错误的服务
 func Restart(ctx Context) {
 
-	b := System{}
-	viper.UnmarshalKey("systems."+ctx.Name, &b)
-
+	b := config.C.Systems[ctx.Name]
 	if len(b.Restart) == 0 {
 		ctx.Sender <- fmt.Sprintln("这个系统没有配置，请联系管理员")
 		return

@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"bot/pkg/config"
 	"io"
 	"os"
 	"path"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
@@ -17,23 +17,23 @@ var Log zerolog.Logger
 func GetLog() zerolog.Logger {
 	writers := []io.Writer{}
 
-	if viper.GetBool("log.enable_console") {
+	if config.C.Log.EnableConsole {
 		writers = append(
 			writers,
 			zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339},
 		)
 	}
 
-	if viper.GetBool("log.enable_file") {
-		dir := viper.GetString("log.log_file_dir")
-		filename := viper.GetString("log.log_file_name")
+	if config.C.Log.EnableFile {
+		dir := config.C.Log.LogFileDir
+		filename := config.C.Log.LogFileName
 		writers = append(
 			writers,
 			rollingFile(dir, filename),
 		)
 	}
 
-	switch viper.GetInt("log.level") {
+	switch config.C.Log.Level {
 	case 0:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	default:

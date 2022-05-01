@@ -1,7 +1,7 @@
 package health
 
 import (
-	"bot/internal/commands"
+	"bot/pkg/config"
 	"bot/pkg/http_client"
 	"bot/pkg/logging"
 	"errors"
@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"github.com/spf13/viper"
 )
 
 type healthUnit struct {
@@ -52,9 +51,7 @@ func onceCheckHealth(h *healthUnit, command string, check string, wg *sync.WaitG
 
 func eachCheckHealths(h *healthUnit) {
 
-	for key, _ := range viper.GetStringMap("systems") {
-		b := &commands.System{}
-		viper.UnmarshalKey("systems."+key, b)
+	for _, b := range config.C.Systems {
 		healthItemsLen := len(b.Health)
 		if healthItemsLen == 0 {
 			continue

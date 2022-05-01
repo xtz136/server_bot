@@ -1,12 +1,9 @@
 package commands
 
 import (
-	"fmt"
-	"os"
 	"time"
 
 	"github.com/rs/zerolog"
-	"github.com/spf13/viper"
 )
 
 type State map[string]interface{}
@@ -19,21 +16,6 @@ type Context = struct {
 	Log         zerolog.Logger
 	State       State
 	MakeTalkEnd func(chan string, string)
-}
-
-type System struct {
-	Name           string `json:"name"`
-	LockIP         string `json:"lock_ip"`
-	ListUserSystem string `json:"list_user_system"`
-	MakeToken      string `json:"make_token"`
-	Restart        []struct {
-		Command string `json:"command"`
-		Check   string `json:"check"`
-	} `json:"restart"`
-	Health []struct {
-		Command string `json:"command"`
-		Check   string `json:"check"`
-	} `json:"health"`
 }
 
 type LockIPResponse struct {
@@ -104,16 +86,4 @@ func newWorkFlow(ctx Context) WorkFlow {
 	w := WorkFlow{ctx: ctx}
 	w.startTime = time.Now()
 	return w
-}
-
-func init() {
-	viper.SetConfigName("config")
-	viper.AddConfigPath(".")
-	if err := viper.ReadInConfig(); err != nil {
-		path, err := os.Getwd()
-		if err != nil {
-			panic(err)
-		}
-		fmt.Printf("fatal error config file %v in %v", err, path)
-	}
 }

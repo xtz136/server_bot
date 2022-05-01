@@ -1,6 +1,7 @@
 package dingding
 
 import (
+	"bot/pkg/config"
 	"bot/pkg/logging"
 	"bot/pkg/talk"
 	"crypto/hmac"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
-	"github.com/spf13/viper"
 
 	"net/http"
 )
@@ -134,7 +134,7 @@ func (dd DingDingAPP) Notify(text string) {
 }
 
 func DingDing(h func(string, chan string, chan string, chan int, zerolog.Logger)) gin.HandlerFunc {
-	ddapp := DingDingAPP{appSecret: viper.GetString("dingding.app_secret")}
+	ddapp := DingDingAPP{appSecret: config.C.DingDing.AppSecret}
 
 	return func(c *gin.Context) {
 		command := ddapp.Request(c)
