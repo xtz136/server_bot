@@ -16,7 +16,8 @@
 tmp/
 
 # config file
-config.json
+/config.json
+/config.yaml
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
