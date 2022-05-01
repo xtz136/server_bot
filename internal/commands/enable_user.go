@@ -8,3 +8,8 @@ func EnableUser(ctx Context) {
 	// sender <- ""
 	ctx.MakeTalkEnd(ctx.Sender, "这个功能还在建设中")
 }
+
+
+func init() {
+	registerTaskCommand("EnableUser", EnableUser)
+}

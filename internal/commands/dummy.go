@@ -17,7 +17,7 @@ func Dummy(ctx Context) {
 		return false
 	})
 	w.add(func(ctx Context) bool {
-		ctx.Log.Info().Msg("to done")
+		ctx.Log.Info().Msg("done")
 		ctx.Sender <- fmt.Sprintf("你回复了：%s", ctx.State["msg"])
 		return true
 	})
@@ -25,4 +25,8 @@ func Dummy(ctx Context) {
 	eT := w.getCostTime()
 	w.start()
 	ctx.MakeTalkEnd(ctx.Sender, fmt.Sprintf("测试结束，耗时：%v，本次服务结束", eT))
+}
+
+func init() {
+	registerTaskCommand("Dummy", Dummy)
 }

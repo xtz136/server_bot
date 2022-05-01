@@ -89,6 +89,9 @@ func Delete(hc HttpClientInterface, url string) ([]byte, error) {
 }
 
 // 不需要返回值的http客户端，自动关闭连接、丢弃返回值
+// 下面例子展示了用法，并且resp永远都是nil
+//  dhc := http_client.NewDumbHttpClient(10)
+//  resp, err := http_client.PostJson(dhc, url, body)
 func NewDumbHttpClient(timeout time.Duration) *DumbHttpClient {
 	client := http.Client{Timeout: timeout * time.Second}
 	return &DumbHttpClient{
@@ -97,6 +100,9 @@ func NewDumbHttpClient(timeout time.Duration) *DumbHttpClient {
 }
 
 // 自动关闭连接的http客户端
+// 下面例子展示了用法
+//  dhc := http_client.NewHttpClient(10)
+//  resp, err := http_client.PostJson(dhc, url, body)
 func NewHttpClient(timeout time.Duration) *HttpClient {
 	client := http.Client{Timeout: timeout * time.Second}
 	return &HttpClient{

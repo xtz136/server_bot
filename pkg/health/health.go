@@ -4,6 +4,7 @@ import (
 	"bot/pkg/config"
 	"bot/pkg/http_client"
 	"bot/pkg/logging"
+	"bot/pkg/task"
 	"errors"
 	"os"
 	"sync"
@@ -22,7 +23,12 @@ type healthUnit struct {
 // 整形：0：正常，1：健康检查错误，2：重启错误，3：完成重启
 func onceCheckHealth(h *healthUnit, command string, check string, wg *sync.WaitGroup) (int, error) {
 	var err error
-	defer wg.Done()
+	bT := time.Now()
+	defer func() {
+		eT := time.Now()
+		h.log.Debug().TimeDiff("cost time", eT, bT).Msg("check health done and wait group -1")
+		wg.Done()
+	}()
 
 	// 检查服务是否超时
 	_, err = http_client.Get(h.checkClient, check)
@@ -51,15 +57,22 @@ func onceCheckHealth(h *healthUnit, command string, check string, wg *sync.WaitG
 
 func eachCheckHealths(h *healthUnit) {
 
-	for _, b := range config.C.Systems {
-		healthItemsLen := len(b.Health)
-		if healthItemsLen == 0 {
-			continue
+	for _, b := range config.C.Beat {
+		targetC, err := task.GetTarget(b.TargetName)
+		if err != nil {
+			h.log.Error().Err(err).Msg("get target")
 		}
+		taskC, err := task.GetTask(b.TaskName)
+		if err != nil {
+			h.log.Error().Err(err).Msg("get task")
+		}
+		targetTask := task.ListTargetTask(targetC, taskC, &config.C.Variables)
+		healthItemsLen := len(targetTask)
 		wg := &sync.WaitGroup{}
 		wg.Add(healthItemsLen)
+		h.log.Debug().Int("count", healthItemsLen).Msg("add wait group")
 
-		for _, item := range b.Health {
+		for _, item := range targetTask {
 			go onceCheckHealth(h, item.Check, item.Command, wg)
 		}
 
@@ -73,19 +86,19 @@ func BeatCheckHealth() {
 
 	log := logging.Log.With().
 		Caller().
-		Str("module", "health").
+		Str("module", "beat").
 		Logger()
 
 	h := &healthUnit{
-		checkClient:   http_client.NewDumbHttpClient(1),
+		checkClient:   http_client.NewDumbHttpClient(5),
 		commandClient: http_client.NewDumbHttpClient(5),
 		log:           log,
 	}
 	h.log.Info().Msg("start check health")
 
 	for {
-		time.Sleep(time.Duration(3) * time.Second)
 		eachCheckHealths(h)
+		time.Sleep(3 * time.Second)
 	}
 
 }

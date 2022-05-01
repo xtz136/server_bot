@@ -3,6 +3,7 @@ package commands
 import (
 	"bot/pkg/config"
 	"bot/pkg/http_client"
+	"bot/pkg/task"
 	"fmt"
 	"time"
 )
@@ -12,23 +13,19 @@ import (
 // 需要按顺序重启多个服务，中间如果有错误，则会跳过错误的服务
 func Restart(ctx Context) {
 
-	b := config.C.Systems[ctx.Name]
-	if len(b.Restart) == 0 {
-		ctx.Sender <- fmt.Sprintln("这个系统没有配置，请联系管理员")
-		return
-	}
-
-	ctx.Sender <- fmt.Sprintf("开始重启%s，耐心等待", b.Name)
+	ctx.Sender <- fmt.Sprintf("开始重启%s，耐心等待", ctx.TargetName)
 
 	bT := time.Now()
 	client := http_client.NewDumbHttpClient(5)
 
 	raiseError := func() {
 		eT := time.Since(bT)
-		ctx.MakeTalkEnd(ctx.Sender, fmt.Sprintf("汪，重启%s失败，耗时: %v, 请联系管理员，本次服务结束", b.Name, eT))
+		ctx.MakeTalkEnd(ctx.Sender, fmt.Sprintf("汪，重启%s失败，耗时: %v, 请联系管理员，本次服务结束", ctx.TargetName, eT))
 	}
 
-	for _, item := range b.Restart {
+	targetTask := task.ListTargetTask(ctx.Target, ctx.Task, &config.C.Variables)
+
+	for _, item := range targetTask {
 		command := item.Command
 		check := item.Check
 
@@ -61,5 +58,9 @@ func Restart(ctx Context) {
 	}
 
 	eT := time.Since(bT)
-	ctx.MakeTalkEnd(ctx.Sender, fmt.Sprintf("汪，重启%s完成，耗时：%v，本次服务结束", b.Name, eT))
+	ctx.MakeTalkEnd(ctx.Sender, fmt.Sprintf("汪，重启%s完成，耗时：%v，本次服务结束", ctx.TargetName, eT))
+}
+
+func init() {
+	registerTaskCommand("Restart", Restart)
 }

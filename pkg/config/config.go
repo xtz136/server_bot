@@ -7,21 +7,26 @@ import (
 	"github.com/spf13/viper"
 )
 
-type State map[string]interface{}
+type Variable struct {
+	Name  string `mapstructure:"name"`
+	Value string `mapstructure:"value"`
+}
 
-type System struct {
-	Name           string `mapstructure:"name"`
-	LockIP         string `mapstructure:"lock_ip"`
-	ListUserSystem string `mapstructure:"list_user_system"`
-	MakeToken      string `mapstructure:"make_token"`
-	Restart        []struct {
-		Command string `mapstructure:"command"`
-		Check   string `mapstructure:"check"`
-	} `mapstructure:"restart"`
-	Health []struct {
-		Command string `mapstructure:"command"`
-		Check   string `mapstructure:"check"`
-	} `mapstructure:"health"`
+type Task struct {
+	Name         string `mapstructure:"name"`
+	Command      string `mapstructure:"command"`
+	Check        string `mapstructure:"check"`
+	Concurrently bool   `mapstructure:"concurrently"`
+	Hidden       bool   `mapstructure:"hidden"`
+}
+
+type Target struct {
+	Url []string `mapstructure:"url"`
+}
+
+type Beat struct {
+	TargetName string `mapstructure:"target_name"`
+	TaskName   string `mapstructure:"task_name"`
 }
 
 type Log struct {
@@ -38,16 +43,23 @@ type DingDing struct {
 }
 
 type Config struct {
-	Systems  map[string]System `mapstructure:"systems"`
-	Log      Log               `mapstructure:"log"`
-	DingDing DingDing          `mapstructure:"dingding"`
+	Targets   map[string]Target `mapstructure:"targets"`
+	Variables []Variable        `mapstructure:"variables"`
+	Tasks     map[string]Task   `mapstructure:"tasks"`
+	Beat      []Beat            `mapstructure:"beat"`
+	Log       Log               `mapstructure:"log"`
+	DingDing  DingDing          `mapstructure:"dingding"`
 }
 
 var C Config
 
 func init() {
-	viper.SetConfigName("config")
+	viper.SetConfigName("task_bot")
 	viper.AddConfigPath(".")
+	if home, err := os.UserHomeDir(); err == nil {
+		viper.AddConfigPath(home)
+	}
+
 	if err := viper.ReadInConfig(); err != nil {
 		path, _ := os.Getwd()
 		fmt.Printf("fatal error config file %v in %v", err, path)

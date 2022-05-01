@@ -2,6 +2,7 @@ package dingding
 
 import (
 	"bot/pkg/config"
+	"bot/pkg/http_client"
 	"bot/pkg/logging"
 	"bot/pkg/talk"
 	"crypto/hmac"
@@ -16,8 +17,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
-
-	"net/http"
 )
 
 func hmacSha256(data string, secret string) string {
@@ -65,17 +64,26 @@ type DingDingResponse struct {
 type DingDingAPP struct {
 	NotifyUrl string
 	Sender    string
+	Command   string
 	appSecret string
 }
 
-func (dd *DingDingAPP) Request(c *gin.Context) string {
+func (dd *DingDingAPP) Parse(c *gin.Context) {
 
 	rq := DingDingRequest{}
 	c.BindJSON(&rq)
 
 	dd.NotifyUrl = rq.Sessionwebhook
 	dd.Sender = rq.Sendernick
-	return strings.TrimSpace(rq.Text.Content)
+	dd.Command = strings.TrimSpace(rq.Text.Content)
+}
+
+func (dd DingDingAPP) getSenderName() string {
+	return dd.Sender
+}
+
+func (dd DingDingAPP) getCommand() string {
+	return dd.Command
 }
 
 func (dd DingDingAPP) Response(text string) DingDingResponse {
@@ -119,32 +127,29 @@ func (dd DingDingAPP) Notify(text string) {
 		Str("text", text).
 		Msg("notify")
 
-	var PTransport = &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-	}
-	client := http.Client{
-		Transport: PTransport,
-	}
-
-	resp, err := client.Post(dd.NotifyUrl, "application/json", bytes.NewBuffer(dataJson))
+	dhc := http_client.NewDumbHttpClient(10)
+	_, err := http_client.PostJson(dhc, dd.NotifyUrl, bytes.NewBuffer(dataJson))
 	if err != nil {
-		panic(err)
+		logging.Log.Error().AnErr("err", err).Msg("notify error")
 	}
-	resp.Body.Close()
 }
 
-func DingDing(h func(string, chan string, chan string, chan int, zerolog.Logger)) gin.HandlerFunc {
+func DingDing(handler func(string, chan string, chan string, zerolog.Logger)) gin.HandlerFunc {
 	ddapp := DingDingAPP{appSecret: config.C.DingDing.AppSecret}
 
 	return func(c *gin.Context) {
-		command := ddapp.Request(c)
+		ddapp.Parse(c)
+		senderName := ddapp.getSenderName()
+		command := ddapp.getCommand()
+
 		log := logging.Log.With().
+			Caller().
 			Str("app", "dingding").
-			Str("module", "command").
 			Str("command", command).
-			Str("sender", ddapp.Sender).
+			Str("sender", senderName).
 			Logger()
 
+		// 确认是钉钉服务器发送的请求
 		timestamp := c.Request.Header.Get("timestamp")
 		sign := c.Request.Header.Get("sign")
 		if err := ddapp.check(timestamp, sign); err != 0 {
@@ -153,39 +158,32 @@ func DingDing(h func(string, chan string, chan string, chan int, zerolog.Logger)
 			return
 		}
 
-		isFirst, sender, reply := talk.ContinueTaskSession(ddapp.Sender)
+		isFirst, sender, reply := talk.ContinueTaskSession(senderName, command)
 		log.Info().Bool("isFirst", isFirst).Msg("got request")
 
-		closeing := make(chan int, 1)
-
-		// 会话中
+		// 会话中，直接将命令通过管道发送给正在执行的机器人
 		if !isFirst {
-			if command == "取消" {
-				sender <- "取消成功"
-				close(closeing)
-			} else {
-				reply <- command
-			}
+			reply <- command
 			return
 		}
 
-		// 开始会话
-		go func(sender chan string, reply chan string) {
+		// 开始会话，将机器人的回复/结果，发送给用户。并处理结束会话
+		go func(sender chan string, reply chan string, senderName string, command string) {
 			for {
 				select {
 				case msg, ok := <-sender:
 					if ok {
 						ddapp.Notify(msg)
 					} else {
-						close(closeing)
-						talk.CloseTaskSession(ddapp.Sender)
+						talk.CloseTaskSession(senderName, command)
 						log.Info().Msg("talk end")
 						return
 					}
 				}
 			}
-		}(sender, reply)
+		}(sender, reply, senderName, command)
 
-		h(command, sender, reply, closeing, log)
+		// 开始进入任务工作
+		handler(command, sender, reply, log)
 	}
 }

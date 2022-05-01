@@ -4,34 +4,62 @@ import (
 	"time"
 )
 
-var Talks = map[string][]chan string{}
-
-func CreateTaskSession() (chan string, chan string) {
-	sender := make(chan string)
-	reply := make(chan string)
-	return sender, reply
+type talk struct {
+	senderChan chan string
+	replyChan  chan string
+	senderName string
+	command    string
 }
 
-func ContinueTaskSession(sender string) (bool, chan string, chan string) {
-	for name := range Talks {
-		if name == sender {
-			return false, Talks[name][0], Talks[name][1]
-		}
-	}
+var talks = []talk{}
 
-	a, b := CreateTaskSession()
-	Talks[sender] = []chan string{
-		a, b,
-	}
-	return true, a, b
+func addTalk(sender chan string, reply chan string, senderName string, command string) {
+	talks = append(talks, talk{sender, reply, senderName, command})
 }
 
-func CloseTaskSession(sender string) {
-	for name := range Talks {
-		if name == sender {
-			delete(Talks, name)
+func removeTalk(senderName string, command string) bool {
+	for i, talk := range talks {
+		if talk.senderName == senderName && talk.command == command {
+			close(talk.senderChan)
+			close(talk.replyChan)
+
+			lastLen := len(talks) - 1
+			talks[i] = talks[lastLen]
+			talks[lastLen] = talk
+			talks = talks[:lastLen]
+			return true
 		}
 	}
+	return false
+}
+
+func findTalk(command string, senderName string) *talk {
+	for _, talk := range talks {
+		if talk.senderName == senderName && talk.command == command {
+			return &talk
+		}
+	}
+	return nil
+}
+
+// 创建会话session或者找到已存在的会话session。
+//
+// 第一个返回值为true表示创建成功，false表示已存在。
+func ContinueTaskSession(senderName string, command string) (bool, chan string, chan string) {
+	talk := findTalk(command, senderName)
+	if talk != nil {
+		return false, talk.senderChan, talk.replyChan
+	}
+
+	senderChan := make(chan string)
+	replyChan := make(chan string)
+	addTalk(senderChan, replyChan, senderName, command)
+	return true, senderChan, replyChan
+}
+
+// 关闭会话session
+func CloseTaskSession(senderName string, command string) {
+	removeTalk(senderName, command)
 }
 
 func MakeTalkEnd(sender chan string, lastMsg string) {

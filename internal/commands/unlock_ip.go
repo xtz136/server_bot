@@ -1,20 +1,21 @@
 package commands
 
 import (
+	"bot/pkg/config"
 	"bot/pkg/http_client"
+	"bot/pkg/task"
 	"encoding/json"
 	"fmt"
 	"net/url"
 	"strconv"
-
-	"github.com/spf13/viper"
 )
 
-func AllowIP(ctx Context) {
-	lockIP := viper.GetString("systems." + ctx.Name + ".lock_ip")
+func UnlockIP(ctx Context) {
 	hc := http_client.NewHttpClient(3)
 	dhc := http_client.NewDumbHttpClient(3)
 	w := newWorkFlow(ctx)
+	targetTask := task.ListTargetTask(ctx.Target, ctx.Task, &config.C.Variables)
+	lockIP := targetTask[0].Command
 
 	// 获取所有被封的IP
 	w.add(func(ctx Context) bool {
@@ -24,7 +25,7 @@ func AllowIP(ctx Context) {
 			return false
 		}
 
-		lresp := LockIPResponse{}
+		lresp := UnlockIPResponse{}
 		json.Unmarshal(respBody, &lresp)
 
 		keys := lresp.Data
@@ -81,4 +82,8 @@ func AllowIP(ctx Context) {
 	} else {
 		ctx.MakeTalkEnd(ctx.Sender, "解除限制失败，如有疑问请联系管理员，本次服务结束")
 	}
+}
+
+func init() {
+	registerTaskCommand("UnlockIP", UnlockIP)
 }

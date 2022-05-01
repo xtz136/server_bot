@@ -16,8 +16,8 @@
 tmp/
 
 # config file
-/config.json
-/config.yaml
+/task_bot.json
+/task_bot.yaml
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
