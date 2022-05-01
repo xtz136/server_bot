@@ -49,12 +49,10 @@ func init() {
 	viper.SetConfigName("config")
 	viper.AddConfigPath(".")
 	if err := viper.ReadInConfig(); err != nil {
-		path, err := os.Getwd()
-		if err != nil {
-			panic(err)
-		}
+		path, _ := os.Getwd()
 		fmt.Printf("fatal error config file %v in %v", err, path)
 	}
-	viper.Unmarshal(&C)
-	fmt.Printf("config: %v\n", C)
+	if err := viper.Unmarshal(&C); err != nil {
+		panic(err)
+	}
 }
