@@ -16,7 +16,6 @@ type Task struct {
 	Name         string `mapstructure:"name"`
 	Command      string `mapstructure:"command"`
 	Check        string `mapstructure:"check"`
-	Concurrently bool   `mapstructure:"concurrently"`
 	Hidden       bool   `mapstructure:"hidden"`
 }
 

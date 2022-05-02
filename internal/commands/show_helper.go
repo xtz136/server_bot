@@ -8,8 +8,10 @@ func ShowHelper(ctx Context) {
 
 	msg := "命令列表：\n"
 
-	for taskName := range config.C.Tasks {
-		msg += "* " + taskName + "\n"
+	for taskName, task := range config.C.Tasks {
+		if !task.Hidden {
+			msg += "* " + taskName + "\n"
+		}
 	}
 
 	msg += "机器列表：\n"

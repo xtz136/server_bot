@@ -1,41 +1,53 @@
 package talk
 
-import (
-	"time"
-)
-
-type talk struct {
-	senderChan chan string
-	replyChan  chan string
-	senderName string
-	command    string
+type TalkInterface interface {
+	// 给客户发送消息
+	ReplyMessage(string)
+	// 获取 sender
+	GetSender() chan string
+	// 获取客户名称
+	GetSenderName() string
+	// 获取 reply
+	GetReply() chan string
+	// 获取客户下达的指令
+	GetCommand() string
+	// 是否是第一次会话
+	IsFirstTalk() bool
 }
 
-var talks = []talk{}
+// 保存会话session
+type Session struct {
+	SenderChan chan string
+	ReplyChan  chan string
+	SenderName string
+	Command    string
+}
+
+var Sessions = []Session{}
 
 func addTalk(sender chan string, reply chan string, senderName string, command string) {
-	talks = append(talks, talk{sender, reply, senderName, command})
+	Sessions = append(Sessions, Session{sender, reply, senderName, command})
 }
 
 func removeTalk(senderName string, command string) bool {
-	for i, talk := range talks {
-		if talk.senderName == senderName && talk.command == command {
-			close(talk.senderChan)
-			close(talk.replyChan)
+	for i, talk := range Sessions {
+		if talk.SenderName == senderName && talk.Command == command {
+			// close(talk.SenderChan)
+			close(talk.ReplyChan)
 
-			lastLen := len(talks) - 1
-			talks[i] = talks[lastLen]
-			talks[lastLen] = talk
-			talks = talks[:lastLen]
+			lastLen := len(Sessions) - 1
+			Sessions[i] = Sessions[lastLen]
+			Sessions[lastLen] = talk
+			Sessions = Sessions[:lastLen]
 			return true
 		}
 	}
 	return false
 }
 
-func findTalk(command string, senderName string) *talk {
-	for _, talk := range talks {
-		if talk.senderName == senderName && talk.command == command {
+func findTalk(command string, senderName string) *Session {
+	for _, talk := range Sessions {
+		if talk.SenderName == senderName {
 			return &talk
 		}
 	}
@@ -48,7 +60,7 @@ func findTalk(command string, senderName string) *talk {
 func ContinueTaskSession(senderName string, command string) (bool, chan string, chan string) {
 	talk := findTalk(command, senderName)
 	if talk != nil {
-		return false, talk.senderChan, talk.replyChan
+		return false, talk.SenderChan, talk.ReplyChan
 	}
 
 	senderChan := make(chan string)
@@ -57,16 +69,18 @@ func ContinueTaskSession(senderName string, command string) (bool, chan string, 
 	return true, senderChan, replyChan
 }
 
-// 关闭会话session
-func CloseTaskSession(senderName string, command string) {
+// 消除会话session
+func DestoryTalkSession(senderName string, command string) {
 	removeTalk(senderName, command)
 }
 
+// 关闭整个会话/任务，允许发最后一个消息
 func MakeTalkEnd(sender chan string, lastMsg string) {
 	if lastMsg != "" {
 		sender <- lastMsg
+		// 等待消息发送完毕
+		// time.Sleep(time.Duration(1) * time.Second)
 	}
 
-	time.Sleep(time.Duration(1) * time.Second)
 	close(sender)
 }

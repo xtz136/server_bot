@@ -1,3 +1,6 @@
+variables:
+  - acess_token: ""
+
 machines:
   - name: 本地
     url: 
@@ -9,17 +12,27 @@ machines:
       - http://localhost:8803
 
 tasks:
-  unlock_ip:
-    command: /account/lock/ip?access_token={access_token}
-  restart:
-    command: /system/restart?access_token={access_token}
-    check: /system/live?access_token={access_token}
-  health:
+  解锁ip:
+    name: UnlockIP
+    command: account/lock/ip?access_token={access_token}
+  重启:
+    name: Restart
+    command: system/restart?access_token={access_token}
+    check: system/live?access_token={access_token}
+  健康检查:
+    name: Health
     command: https://httpbin.org/get
-    check: /system/live?access_token={access_token}
+    check: system/live?access_token={access_token}
+    hidden: true
+  测试:
+    name: Dummy
+    hidden: true
+  帮助:
+    name: ShowHelper
 
-variables:
-  - acess_token: 603ce430deac0b3e52ec5b2f
+beat:
+  # - target_name: 本地
+  #   task_name: 健康检查
 
 systems:
   本地:

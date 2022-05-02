@@ -2,7 +2,6 @@ package commands
 
 import (
 	"bot/pkg/config"
-	"time"
 
 	"github.com/rs/zerolog"
 )
@@ -59,42 +58,6 @@ type Token struct {
 	Message string `json:"message"`
 	Data    string `json:"data"`
 	ReqID   string `json:"req_id"`
-}
-
-type stepFunc func(ctx Context) bool
-
-type WorkFlow struct {
-	ctx       Context
-	funcs     []stepFunc
-	startTime time.Time
-	costTime  time.Duration
-}
-
-func (this *WorkFlow) add(f stepFunc) {
-	this.funcs = append(this.funcs, f)
-}
-
-func (this *WorkFlow) start() bool {
-	success := true
-	for _, f := range this.funcs {
-		next := f(this.ctx)
-		if !next {
-			success = false
-			break
-		}
-	}
-	this.costTime = time.Since(this.startTime)
-	return success
-}
-
-func (this *WorkFlow) getCostTime() time.Duration {
-	return this.costTime
-}
-
-func newWorkFlow(ctx Context) WorkFlow {
-	w := WorkFlow{ctx: ctx}
-	w.startTime = time.Now()
-	return w
 }
 
 // 保存任务别名和任务执行函数的关系

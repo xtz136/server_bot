@@ -16,7 +16,6 @@ import (
 	"encoding/json"
 
 	"github.com/gin-gonic/gin"
-	"github.com/rs/zerolog"
 )
 
 func hmacSha256(data string, secret string) string {
@@ -62,10 +61,13 @@ type DingDingResponse struct {
 }
 
 type DingDingAPP struct {
-	NotifyUrl string
-	Sender    string
-	Command   string
-	appSecret string
+	notifyUrl   string
+	appSecret   string
+	senderName  string
+	sender      chan string
+	reply       chan string
+	command     string
+	isFirstTalk bool
 }
 
 func (dd *DingDingAPP) Parse(c *gin.Context) {
@@ -73,17 +75,29 @@ func (dd *DingDingAPP) Parse(c *gin.Context) {
 	rq := DingDingRequest{}
 	c.BindJSON(&rq)
 
-	dd.NotifyUrl = rq.Sessionwebhook
-	dd.Sender = rq.Sendernick
-	dd.Command = strings.TrimSpace(rq.Text.Content)
+	dd.notifyUrl = rq.Sessionwebhook
+	dd.senderName = rq.Sendernick
+	dd.command = strings.TrimSpace(rq.Text.Content)
 }
 
-func (dd DingDingAPP) getSenderName() string {
-	return dd.Sender
+func (dd DingDingAPP) GetSenderName() string {
+	return dd.senderName
 }
 
-func (dd DingDingAPP) getCommand() string {
-	return dd.Command
+func (dd DingDingAPP) GetCommand() string {
+	return dd.command
+}
+
+func (dd DingDingAPP) GetSender() chan string {
+	return dd.sender
+}
+
+func (dd DingDingAPP) GetReply() chan string {
+	return dd.reply
+}
+
+func (dd DingDingAPP) IsFirstTalk() bool {
+	return dd.isFirstTalk
 }
 
 func (dd DingDingAPP) Response(text string) DingDingResponse {
@@ -118,7 +132,7 @@ func (dd DingDingAPP) check(timestamp string, sign string) int {
 }
 
 // 给钉钉发送消息，目前只能发文本信息
-func (dd DingDingAPP) Notify(text string) {
+func (dd DingDingAPP) ReplyMessage(text string) {
 	data := dd.Response(text)
 	dataJson, _ := json.Marshal(data)
 
@@ -128,19 +142,19 @@ func (dd DingDingAPP) Notify(text string) {
 		Msg("notify")
 
 	dhc := http_client.NewDumbHttpClient(10)
-	_, err := http_client.PostJson(dhc, dd.NotifyUrl, bytes.NewBuffer(dataJson))
+	_, err := http_client.PostJson(dhc, dd.notifyUrl, bytes.NewBuffer(dataJson))
 	if err != nil {
 		logging.Log.Error().AnErr("err", err).Msg("notify error")
 	}
 }
 
-func DingDing(handler func(string, chan string, chan string, zerolog.Logger)) gin.HandlerFunc {
-	ddapp := DingDingAPP{appSecret: config.C.DingDing.AppSecret}
+func DingDing(handler func(talk.TalkInterface)) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
+		ddapp := DingDingAPP{appSecret: config.C.DingDing.AppSecret}
 		ddapp.Parse(c)
-		senderName := ddapp.getSenderName()
-		command := ddapp.getCommand()
+		senderName := ddapp.GetSenderName()
+		command := ddapp.GetCommand()
 
 		log := logging.Log.With().
 			Caller().
@@ -153,37 +167,18 @@ func DingDing(handler func(string, chan string, chan string, zerolog.Logger)) gi
 		timestamp := c.Request.Header.Get("timestamp")
 		sign := c.Request.Header.Get("sign")
 		if err := ddapp.check(timestamp, sign); err != 0 {
-			log.Debug().Str("timestamp", timestamp).Str("sign", sign).Int("err", err).Msg("非法操作")
-			ddapp.Notify("非法操作")
+			log.Warn().Str("timestamp", timestamp).Str("sign", sign).Int("err", err).Msg("非法操作")
+			ddapp.ReplyMessage("非法操作")
 			return
 		}
 
 		isFirst, sender, reply := talk.ContinueTaskSession(senderName, command)
 		log.Info().Bool("isFirst", isFirst).Msg("got request")
 
-		// 会话中，直接将命令通过管道发送给正在执行的机器人
-		if !isFirst {
-			reply <- command
-			return
-		}
-
-		// 开始会话，将机器人的回复/结果，发送给用户。并处理结束会话
-		go func(sender chan string, reply chan string, senderName string, command string) {
-			for {
-				select {
-				case msg, ok := <-sender:
-					if ok {
-						ddapp.Notify(msg)
-					} else {
-						talk.CloseTaskSession(senderName, command)
-						log.Info().Msg("talk end")
-						return
-					}
-				}
-			}
-		}(sender, reply, senderName, command)
-
 		// 开始进入任务工作
-		handler(command, sender, reply, log)
+		ddapp.sender = sender
+		ddapp.reply = reply
+		ddapp.isFirstTalk = isFirst
+		handler(&ddapp)
 	}
 }

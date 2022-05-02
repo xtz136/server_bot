@@ -39,6 +39,11 @@ func Restart(ctx Context) {
 		}
 		ctx.Log.Info().Str("request", command).Msg("run command")
 
+		// 不需要检查
+		if check == "" {
+			continue
+		}
+
 		// 服务已经重启了，这里会每3秒检查一次，直到检查链接响应
 		// 循环100次，每次3秒，一共5分钟
 		maxTry := 100
