@@ -14,7 +14,6 @@ import (
 
 type healthUnit struct {
 	log           zerolog.Logger
-	wg            *sync.WaitGroup
 	checkClient   http_client.HttpClientInterface
 	commandClient http_client.HttpClientInterface
 }
@@ -27,7 +26,6 @@ func onceCheckHealth(hu *healthUnit, check string, command string) (int, error) 
 	defer func() {
 		eT := time.Now()
 		hu.log.Debug().TimeDiff("cost time", eT, bT).Msg("check health done and wait group -1")
-		hu.wg.Done()
 	}()
 
 	// 检查服务是否超时
@@ -60,20 +58,22 @@ func CheckHealth(ctx Context) {
 	beatTasksLen := len(targetTask)
 	ctx.Log.Debug().Int("count", beatTasksLen).Msg("add wait group")
 
-	bu := &healthUnit{
-		wg:            &sync.WaitGroup{},
+	hu := &healthUnit{
 		checkClient:   http_client.NewDumbHttpClient(5),
 		commandClient: http_client.NewDumbHttpClient(5),
 		log:           ctx.Log,
 	}
-	bu.wg.Add(beatTasksLen)
+	wg := &sync.WaitGroup{}
+	wg.Add(beatTasksLen)
 
 	for _, item := range targetTask {
-		go onceCheckHealth(bu, item.Check, item.Command)
+		go func(hu *healthUnit, item *task.TargetTask) {
+			defer wg.Done()
+			onceCheckHealth(hu, item.Check, item.Command)
+		}(hu, &item)
 	}
 
-	bu.wg.Wait()
-
+	wg.Wait()
 }
 
 func init() {
