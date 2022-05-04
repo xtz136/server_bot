@@ -1,4 +1,4 @@
-package health
+package commands
 
 import (
 	"errors"
@@ -33,10 +33,9 @@ func (mhc *MockHttpClient) Fetch(req *http.Request) ([]byte, error) {
 
 func Test_onceCheckHealth(t *testing.T) {
 	type args struct {
-		h       *healthUnit
+		bu      *healthUnit
 		command string
 		check   string
-		wg      *sync.WaitGroup
 	}
 	logger := log.With().
 		Caller().
@@ -52,31 +51,35 @@ func Test_onceCheckHealth(t *testing.T) {
 	}{
 		{"good", args{&healthUnit{
 			logger,
+			nil,
 			mockHttpClient,
 			mockHttpClient,
-		}, "http://with_normal", "http://with_normal", nil}, 0},
-		{"restarted", args{&healthUnit{
-			logger,
-			mockHttpClient,
-			mockHttpClient,
-		}, "http://with_normal", "http://with_timeout", nil}, 3},
+		}, "http://with_normal", "http://with_normal"}, 0},
 		{"check failed", args{&healthUnit{
 			logger,
+			nil,
 			mockHttpClient,
 			mockHttpClient,
-		}, "http://with_normal", "http://with_crash", nil}, 1},
+		}, "http://with_normal", "http://with_crash"}, 1},
 		{"restart failed", args{&healthUnit{
 			logger,
+			nil,
 			mockHttpClient,
 			mockHttpClient,
-		}, "http://with_crash", "http://with_timeout", nil}, 2},
+		}, "http://with_crash", "http://with_timeout"}, 2},
+		{"restarted", args{&healthUnit{
+			logger,
+			nil,
+			mockHttpClient,
+			mockHttpClient,
+		}, "http://with_normal", "http://with_timeout"}, 3},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			wg := &sync.WaitGroup{}
 			wg.Add(1)
-			tt.args.wg = wg
-			code, _ := onceCheckHealth(tt.args.h, tt.args.command, tt.args.check, tt.args.wg)
+			tt.args.bu.wg = wg
+			code, _ := onceCheckHealth(tt.args.bu, tt.args.check, tt.args.command)
 			if code != tt.code {
 				error_msg := fmt.Sprintf("code error, real: %d, expect: %d", code, tt.code)
 				panic(error_msg)
