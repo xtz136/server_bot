@@ -5,6 +5,7 @@ import (
 	"bot/pkg/config"
 	"bot/pkg/dingding"
 	"bot/pkg/handler"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,5 +17,5 @@ func main() {
 	if len(config.C.Beat) > 0 {
 		go beat.StartBeat()
 	}
-	r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
+	r.Run(fmt.Sprintf("%s:%d", config.C.App.Host, config.C.App.Port))
 }

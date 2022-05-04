@@ -1,15 +1,30 @@
+app:
+  host: localhost
+  port: 8080
+
+log:
+  level: 1
+  enable_console: true
+  enable_file: false
+  log_file_dir: ./logs
+  log_file_name: bot.log
+
+dingding:
+  enable: true
+  app_secret: your-dingding-app-secret-here
+
 variables:
   - acess_token: ""
 
-machines:
-  - name: 本地
+targets:
+  阿里云:
     url: 
-      - http://localhost:8800
-      - http://localhost:8801
-  - name: 本地2
+      - http://localhost:8802/
+      - http://localhost:8803/
+  腾讯云:
     url: 
-      - http://localhost:8802
-      - http://localhost:8803
+      - http://localhost:8802/
+      - http://localhost:8803/
 
 tasks:
   解锁ip:
@@ -33,27 +48,3 @@ tasks:
 beat:
   # - target_name: 本地
   #   task_name: 健康检查
-
-systems:
-  本地:
-    name: 本地
-    lock_ip: http://localhost:8800/account/lock/ip?access_token=603ce430deac0b3e52ec5b2f
-    list_user_system: http://localhost:8800/account/token/list?access_token=603ce430deac0b3e52ec5b2f
-    make_token: http://localhost:8800/account/token/make?access_token=603ce430deac0b3e52ec5b2f
-    restart:
-      - command: http://localhost:8800/system/live?access_token=603ce430deac0b3e52ec5b2f
-        check: http://localhost:8800/system/live?access_token=603ce430deac0b3e52ec5b2f
-    health:
-      - command: https://httpbin.org/get
-        check: http://localhost:8800/system/crash?access_token=603ce430deac0b3e52ec5b2f
-
-log:
-  level: 1
-  enable_console: true
-  enable_file: false
-  log_file_dir: ./logs
-  log_file_name: bot.log
-
-dingding:
-  enable: true
-  app_secret: your-dingding-app-secret-here

@@ -13,10 +13,10 @@ type Variable struct {
 }
 
 type Task struct {
-	Name         string `mapstructure:"name"`
-	Command      string `mapstructure:"command"`
-	Check        string `mapstructure:"check"`
-	Hidden       bool   `mapstructure:"hidden"`
+	Name    string `mapstructure:"name"`
+	Command string `mapstructure:"command"`
+	Check   string `mapstructure:"check"`
+	Hidden  bool   `mapstructure:"hidden"`
 }
 
 type Target struct {
@@ -41,7 +41,13 @@ type DingDing struct {
 	AppSecret string `mapstructure:"app_secret"`
 }
 
+type App struct {
+	Host string `mapstructure:"host"`
+	Port int    `mapstructure:"port"`
+}
+
 type Config struct {
+	App       App               `mapstructure:"app"`
 	Targets   map[string]Target `mapstructure:"targets"`
 	Variables []Variable        `mapstructure:"variables"`
 	Tasks     map[string]Task   `mapstructure:"tasks"`
