@@ -1,34 +1,11 @@
 package commands
 
 import (
-	"errors"
 	"fmt"
-	"net/http"
 	"testing"
 
 	"github.com/rs/zerolog/log"
 )
-
-type MockTimeoutError struct {
-	error
-}
-
-func (e MockTimeoutError) Timeout() bool {
-	return true
-}
-
-type MockHttpClient struct {
-}
-
-func (mhc *MockHttpClient) Fetch(req *http.Request) ([]byte, error) {
-	if req.URL.String() == "http://with_timeout" {
-		return nil, &MockTimeoutError{error: errors.New("timeout")}
-	}
-	if req.URL.String() == "http://with_crash" {
-		return nil, errors.New("crash")
-	}
-	return nil, nil
-}
 
 func Test_onceCheckHealth(t *testing.T) {
 	type args struct {
@@ -71,7 +48,7 @@ func Test_onceCheckHealth(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			code, _ := onceCheckHealth(tt.args.bu, tt.args.check, tt.args.command)
+			code, _ := checkHealth(tt.args.bu, tt.args.check, tt.args.command)
 			if code != tt.code {
 				error_msg := fmt.Sprintf("code error, real: %d, expect: %d", code, tt.code)
 				panic(error_msg)

@@ -20,7 +20,7 @@ type healthUnit struct {
 
 // 返回一个整形和错误
 // 整形：0：正常，1：健康检查错误，2：重启错误，3：完成重启
-func onceCheckHealth(hu *healthUnit, check string, command string) (int, error) {
+func checkHealth(hu *healthUnit, check string, command string) (int, error) {
 	var err error
 	bT := time.Now()
 	defer func() {
@@ -53,7 +53,7 @@ func onceCheckHealth(hu *healthUnit, check string, command string) (int, error) 
 	return 3, nil
 }
 
-func CheckHealth(ctx Context) {
+func CheckHealthGroup(ctx Context) {
 	targetTask := task.ListTargetTask(ctx.Target, ctx.Task, &config.C.Variables)
 	beatTasksLen := len(targetTask)
 	ctx.Log.Debug().Int("count", beatTasksLen).Msg("add wait group")
@@ -69,7 +69,7 @@ func CheckHealth(ctx Context) {
 	for _, item := range targetTask {
 		go func(hu *healthUnit, item *task.TargetTask) {
 			defer wg.Done()
-			onceCheckHealth(hu, item.Check, item.Command)
+			checkHealth(hu, item.Check, item.Command)
 		}(hu, &item)
 	}
 
@@ -77,5 +77,5 @@ func CheckHealth(ctx Context) {
 }
 
 func init() {
-	registerTaskCommand("CheckHealth", CheckHealth)
+	registerTaskCommand("CheckHealth", CheckHealthGroup)
 }

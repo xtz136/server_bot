@@ -47,48 +47,45 @@ func (wf *WorkFlow) getNext(name string) *workStep {
 //  3：reply channel 被关闭
 //  4：进入了死循环，同一个步骤连续执行了10次
 func (wf *WorkFlow) start(name string) int {
-	success := 0
 	lastName := name
 	defaultMaxCall := 10
 	maxCall := defaultMaxCall
 
-Exit:
 	for {
 		ws := wf.getNext(name)
 		if ws == nil {
 			wf.ctx.Log.Error().Str("name", name).Msg("workstep not found")
-			success = 1
-			break Exit
+			return 1
 		}
-		// 防止sender提前被关闭
+		// 发送消息给客户
 		select {
 		case _, ok := <-wf.ctx.Sender:
+			// 防止sender提前被关闭
 			if !ok {
 				wf.ctx.Log.Error().Msg("sender channel closed")
-				success = 2
-				break Exit
+				return 2
 			}
 			wf.ctx.Sender <- ws.msg
 		default:
 			wf.ctx.Sender <- ws.msg
 		}
+		// 等待客户回复
 		replyMsg, ok := <-wf.ctx.Reply
 		if !ok {
 			wf.ctx.Log.Error().Msg("reply channel closed")
-			success = 3
-			break Exit
+			return 3
 		}
+		// 执行流程步骤，name 指明了下一个步骤的名称
 		name = ws.stepFunc(wf.ctx, replyMsg)
+		// 流程完成
 		if name == "" {
-			success = 0
-			break Exit
+			return 0
 		}
 		// 避免死循环，同一个步骤不能连续调用10次
 		if lastName == name {
 			if maxCall--; maxCall == 0 {
 				wf.ctx.Log.Error().Str("name", name).Msg("circular call")
-				success = 4
-				break Exit
+				return 4
 			}
 		} else {
 			lastName = name
@@ -96,7 +93,6 @@ Exit:
 		}
 
 	}
-	return success
 }
 
 func (wf *WorkFlow) getCostTime() time.Duration {
