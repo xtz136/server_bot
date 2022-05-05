@@ -34,32 +34,6 @@ type UnlockIPResponse struct {
 	ReqID   string   `json:"req_id"`
 }
 
-type UserSystem struct {
-	Status  bool   `json:"status"`
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Data    []struct {
-		UserAlias           string `json:"user_alias"`
-		SystemID            string `json:"system_id"`
-		SystemAlias         string `json:"system_alias"`
-		DanweiID            string `json:"danwei_id"`
-		DanweiAlias         string `json:"danwei_alias"`
-		DanweiParentAlias   string `json:"danwei_parent_alias"`
-		QuanxianID          string `json:"quanxian_id"`
-		QuanxianAlias       string `json:"quanxian_alias"`
-		QuanxianParentAlias string `json:"quanxian_parent_alias"`
-	} `json:"data"`
-	ReqID string `json:"req_id"`
-}
-
-type Token struct {
-	Status  bool   `json:"status"`
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Data    string `json:"data"`
-	ReqID   string `json:"req_id"`
-}
-
 // 保存任务别名和任务执行函数的关系
 var TaskCommands = map[string]func(Context){}
 
