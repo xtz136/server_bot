@@ -14,7 +14,8 @@ dingding:
   app_secret: your-dingding-app-secret-here
 
 variables:
-  - acess_token: ""
+  - name: access_token
+    value: 
 
 targets:
   阿里云:
