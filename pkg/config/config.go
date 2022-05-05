@@ -20,7 +20,8 @@ type Task struct {
 }
 
 type Target struct {
-	Url []string `mapstructure:"url"`
+	Url    []string `mapstructure:"url"`
+	Hidden bool     `mapstructure:"hidden"`
 }
 
 type Beat struct {

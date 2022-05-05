@@ -131,6 +131,22 @@ func Test_listTargetTask(t *testing.T) {
 				},
 			},
 		},
+		{
+			"target url contains secondary directory",
+			args{
+				&config.Target{Url: []string{"http://localhost/website/"}},
+				&config.Task{Command: "command?token={token}", Check: "../checker/check?token={token}"},
+				&[]config.Variable{
+					{Name: "token", Value: "123"},
+				},
+			},
+			[]TargetTask{
+				{
+					"http://localhost/website/command?token=123",
+					"http://localhost/checker/check?token=123",
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

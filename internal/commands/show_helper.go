@@ -16,8 +16,10 @@ func ShowHelper(ctx Context) {
 
 	msg += "机器列表：\n"
 
-	for targetName := range config.C.Targets {
-		msg += "* " + targetName + "\n"
+	for targetName, target := range config.C.Targets {
+		if !target.Hidden {
+			msg += "* " + targetName + "\n"
+		}
 	}
 
 	msg += "使用命令+机器名称，如：\n"
