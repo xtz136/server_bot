@@ -16,10 +16,10 @@
 tmp/
 
 # config file
-/task_bot.json
-/task_bot.yaml
+/server_bot.json
+/server_bot.yaml
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
-bot
+server_bot
 .vscode

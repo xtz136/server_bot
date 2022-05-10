@@ -1,5 +1,10 @@
 dev: 
-	~/go/bin/air -c .air.conf
+	$(GOPATH)/bin/air -c .air.conf
 
-build:
-	go build -o bot .
+server_bot:
+	go build -o server_bot .
+
+build: server_bot
+
+start: server_bot
+	GIN_MODE=release ./server_bot
