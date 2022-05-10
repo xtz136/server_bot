@@ -1,6 +1,7 @@
 package http_client
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -43,48 +44,53 @@ func (hc *DumbHttpClient) Fetch(req *http.Request) ([]byte, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("%s %s http status code is %v", req.Method, req.URL, resp.StatusCode)
 	}
-	return nil, nil
+	return []byte{}, nil
 }
 
-func Head(hc HttpClientInterface, url string) ([]byte, error) {
+func Head(ctx context.Context, hc HttpClientInterface, url string) ([]byte, error) {
 	req, err := http.NewRequest(http.MethodHead, url, nil)
 	if err != nil {
 		return nil, err
 	}
+	req = req.WithContext(ctx)
 	return hc.Fetch(req)
 }
 
-func Get(hc HttpClientInterface, url string) ([]byte, error) {
+func Get(ctx context.Context, hc HttpClientInterface, url string) ([]byte, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
+	req = req.WithContext(ctx)
 	return hc.Fetch(req)
 }
 
-func PostJson(hc HttpClientInterface, url string, body io.Reader) ([]byte, error) {
+func PostJson(ctx context.Context, hc HttpClientInterface, url string, body io.Reader) ([]byte, error) {
 	req, err := http.NewRequest(http.MethodPost, url, body)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(ctx)
 	return hc.Fetch(req)
 }
 
-func Post(hc HttpClientInterface, url string, body io.Reader) ([]byte, error) {
+func Post(ctx context.Context, hc HttpClientInterface, url string, body io.Reader) ([]byte, error) {
 	req, err := http.NewRequest(http.MethodPost, url, body)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = req.WithContext(ctx)
 	return hc.Fetch(req)
 }
 
-func Delete(hc HttpClientInterface, url string) ([]byte, error) {
+func Delete(ctx context.Context, hc HttpClientInterface, url string) ([]byte, error) {
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	if err != nil {
 		return nil, err
 	}
+	req = req.WithContext(ctx)
 	return hc.Fetch(req)
 }
 
@@ -93,7 +99,7 @@ func Delete(hc HttpClientInterface, url string) ([]byte, error) {
 //  dhc := http_client.NewDumbHttpClient(10)
 //  resp, err := http_client.PostJson(dhc, url, body)
 func NewDumbHttpClient(timeout time.Duration) *DumbHttpClient {
-	client := http.Client{Timeout: timeout * time.Second}
+	client := http.Client{Timeout: timeout}
 	return &DumbHttpClient{
 		Client: &client,
 	}
@@ -104,7 +110,7 @@ func NewDumbHttpClient(timeout time.Duration) *DumbHttpClient {
 //  dhc := http_client.NewHttpClient(10)
 //  resp, err := http_client.PostJson(dhc, url, body)
 func NewHttpClient(timeout time.Duration) *HttpClient {
-	client := http.Client{Timeout: timeout * time.Second}
+	client := http.Client{Timeout: timeout}
 	return &HttpClient{
 		Client: &client,
 	}

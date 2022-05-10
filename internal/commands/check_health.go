@@ -3,7 +3,9 @@ package commands
 import (
 	"bot/pkg/config"
 	"bot/pkg/http_client"
-	"bot/pkg/task"
+	"bot/pkg/talks"
+	"bot/pkg/tasks"
+	"context"
 	"errors"
 	"os"
 	"sync"
@@ -20,7 +22,7 @@ type healthUnit struct {
 
 // 返回一个整形和错误
 // 整形：0：正常，1：健康检查错误，2：重启错误，3：完成重启
-func checkHealth(hu *healthUnit, check string, command string) (int, error) {
+func checkHealth(ctx context.Context, hu *healthUnit, check string, command string) (int, error) {
 	var err error
 	bT := time.Now()
 	defer func() {
@@ -29,7 +31,7 @@ func checkHealth(hu *healthUnit, check string, command string) (int, error) {
 	}()
 
 	// 检查服务是否超时
-	_, err = http_client.Get(hu.checkClient, check)
+	_, err = http_client.Get(ctx, hu.checkClient, check)
 	if err == nil {
 		// 服务正常
 		return 0, nil
@@ -43,7 +45,7 @@ func checkHealth(hu *healthUnit, check string, command string) (int, error) {
 	hu.log.Info().Str("check", check).Msg("get timeout")
 
 	// 如果请求超时了，就重启服务
-	_, err = http_client.Get(hu.commandClient, command)
+	_, err = http_client.Get(ctx, hu.commandClient, command)
 	if err != nil {
 		// 重启服务失败
 		hu.log.Error().Err(err).Msg("restart")
@@ -53,23 +55,26 @@ func checkHealth(hu *healthUnit, check string, command string) (int, error) {
 	return 3, nil
 }
 
-func CheckHealthGroup(ctx Context) {
-	targetTask := task.ListTargetTask(ctx.Target, ctx.Task, &config.C.Variables)
+func CheckHealthGroup(ctx context.Context) {
+	target := ctx.Value(talks.TargetKey).([]config.Target)
+	task := ctx.Value(talks.TaskKey).(*config.Task)
+	logger := ctx.Value(talks.LoggerKey).(zerolog.Logger)
+	targetTask := tasks.ListTargetTask(target, task, &config.C.Variables)
 	beatTasksLen := len(targetTask)
-	ctx.Log.Debug().Int("count", beatTasksLen).Msg("add wait group")
+	logger.Debug().Int("count", beatTasksLen).Msg("add wait group")
 
 	hu := &healthUnit{
-		checkClient:   http_client.NewDumbHttpClient(5),
-		commandClient: http_client.NewDumbHttpClient(5),
-		log:           ctx.Log,
+		checkClient:   http_client.NewDumbHttpClient(5 * time.Second),
+		commandClient: http_client.NewDumbHttpClient(5 * time.Second),
+		log:           logger,
 	}
 	wg := &sync.WaitGroup{}
 	wg.Add(beatTasksLen)
 
 	for _, item := range targetTask {
-		go func(hu *healthUnit, item *task.TargetTask) {
+		go func(hu *healthUnit, item *tasks.TargetTask) {
 			defer wg.Done()
-			checkHealth(hu, item.Check, item.Command)
+			checkHealth(ctx, hu, item.Check, item.Command)
 		}(hu, &item)
 	}
 

@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"errors"
 	"net/http"
 )
@@ -24,4 +25,9 @@ func (mhc *MockHttpClient) Fetch(req *http.Request) ([]byte, error) {
 		return nil, errors.New("crash")
 	}
 	return nil, nil
+}
+
+func makeContext() context.Context {
+	ctx := context.Background()
+	return ctx
 }

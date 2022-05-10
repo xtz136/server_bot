@@ -19,13 +19,16 @@ variables:
 
 targets:
   阿里云:
-    url: 
-      - http://localhost:8802/
-      - http://localhost:8803/
+    - url: http://localhost:8802/
+      variables:
+        - name: access_token
+          value: sss
+    - url: http://localhost:8802/
+      variables:
+        - name: access_token
+          value: sss
   腾讯云:
-    url: 
-      - http://localhost:8802/
-      - http://localhost:8803/
+    - url: http://localhost:8802/
 
 tasks:
   解锁ip:

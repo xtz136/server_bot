@@ -4,9 +4,11 @@ import (
 	"bot/internal/commands"
 	"bot/pkg/config"
 	"bot/pkg/logging"
-	talks "bot/pkg/talk"
-	tasks "bot/pkg/task"
+	"bot/pkg/talks"
+	"bot/pkg/tasks"
+	"context"
 	"strings"
+	"time"
 )
 
 func Handler(talk talks.TalkInterface) {
@@ -22,31 +24,26 @@ func Handler(talk talks.TalkInterface) {
 	}
 
 	log := logging.Log.With().
-		Caller().
 		Str("app", "handler").
 		Str("command", command).
 		Str("sender", senderName).
 		Logger()
 
-	ctx := commands.Context{
-		"",
-		sender,
-		reply,
-		nil,
-		nil,
-		log,
-		make(commands.State),
-		talks.MakeTalkEnd,
-	}
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, talks.SenderKey, sender)
+	ctx = context.WithValue(ctx, talks.ReplyKey, reply)
+	ctx = context.WithValue(ctx, talks.LoggerKey, log)
+	ctx, cancel := context.WithTimeout(ctx, 5*60*time.Second)
 
 	// 监听 sender，转发消息给客户。并监听/处理结束会话
 	// 当 sender 被关闭，说明任务已经结束
 	go func(sender chan string, talk talks.TalkInterface) {
+		defer cancel()
 		for {
 			select {
 			case msg, ok := <-sender:
 				if ok {
-					go talk.ReplyMessage(msg)
+					go talk.ReplyMessage(ctx, msg)
 				} else {
 					senderName := talk.GetSenderName()
 					command := talk.GetCommand()
@@ -66,13 +63,13 @@ func Handler(talk talks.TalkInterface) {
 		}
 		targetName := command[len(taskName):]
 		if target, err := tasks.GetTarget(targetName); err != nil {
-			talks.MakeTalkEnd(sender, targetName+" 这个机器没有配置，请联系管理员")
+			talks.MakeTalkEnd(ctx, targetName+" 这个机器没有配置，请联系管理员")
 			return
 		} else {
-			ctx.Target = target
+			ctx = context.WithValue(ctx, talks.TargetKey, &target)
 		}
-		ctx.Task = &task
-		ctx.TargetName = targetName
+		ctx = context.WithValue(ctx, talks.TaskKey, &task)
+		ctx = context.WithValue(ctx, talks.TargetNameKey, targetName)
 		go commands.TaskCommands[task.Name](ctx)
 		return
 	}

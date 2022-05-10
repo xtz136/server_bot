@@ -1,10 +1,14 @@
 package commands
 
 import (
+	"bot/pkg/talks"
+	"context"
 	"time"
+
+	"github.com/rs/zerolog"
 )
 
-type stepFunc func(Context, string) string
+type stepFunc func(context.Context, string) string
 type workStep struct {
 	name     string
 	msg      string
@@ -12,7 +16,7 @@ type workStep struct {
 }
 
 type WorkFlow struct {
-	ctx       Context
+	ctx       context.Context
 	funcs     []workStep
 	startTime time.Time
 }
@@ -50,33 +54,28 @@ func (wf *WorkFlow) start(name string) int {
 	lastName := name
 	defaultMaxCall := 10
 	maxCall := defaultMaxCall
+	logger := wf.ctx.Value(talks.LoggerKey).(zerolog.Logger)
 
 	for {
 		ws := wf.getNext(name)
 		if ws == nil {
-			wf.ctx.Log.Error().Str("name", name).Msg("workstep not found")
+			logger.Error().Str("name", name).Msg("workstep not found")
 			return 1
 		}
 		// 发送消息给客户
-		select {
-		case _, ok := <-wf.ctx.Sender:
-			// 防止sender提前被关闭
-			if !ok {
-				wf.ctx.Log.Error().Msg("sender channel closed")
-				return 2
-			}
-			wf.ctx.Sender <- ws.msg
-		default:
-			wf.ctx.Sender <- ws.msg
+		err := talks.ReplayMsg(wf.ctx, ws.msg)
+		if err != nil {
+			logger.Error().Err(err).Msg("reply message")
+			return 2
 		}
 		// 等待客户回复
-		replyMsg, ok := <-wf.ctx.Reply
-		if !ok {
-			wf.ctx.Log.Error().Msg("reply channel closed")
+		msg, err := talks.ReceiveMsg(wf.ctx)
+		if err != nil {
+			logger.Error().Err(err).Msg("receive message")
 			return 3
 		}
 		// 执行流程步骤，name 指明了下一个步骤的名称
-		name = ws.stepFunc(wf.ctx, replyMsg)
+		name = ws.stepFunc(wf.ctx, msg)
 		// 流程完成
 		if name == "" {
 			return 0
@@ -84,7 +83,7 @@ func (wf *WorkFlow) start(name string) int {
 		// 避免死循环，同一个步骤不能连续调用10次
 		if lastName == name {
 			if maxCall--; maxCall == 0 {
-				wf.ctx.Log.Error().Str("name", name).Msg("circular call")
+				logger.Error().Str("name", name).Msg("circular call")
 				return 4
 			}
 		} else {
@@ -99,7 +98,7 @@ func (wf *WorkFlow) getCostTime() time.Duration {
 	return time.Since(wf.startTime)
 }
 
-func newWorkFlow(ctx Context) *WorkFlow {
+func newWorkFlow(ctx context.Context) *WorkFlow {
 	w := WorkFlow{ctx: ctx}
 	w.startTime = time.Now()
 	return &w

@@ -20,8 +20,9 @@ type Task struct {
 }
 
 type Target struct {
-	Url    []string `mapstructure:"url"`
-	Hidden bool     `mapstructure:"hidden"`
+	Url       string     `mapstructure:"url"`
+	Variables []Variable `mapstructure:"variables"`
+	Hidden    bool       `mapstructure:"hidden"`
 }
 
 type Beat struct {
@@ -48,19 +49,19 @@ type App struct {
 }
 
 type Config struct {
-	App       App               `mapstructure:"app"`
-	Targets   map[string]Target `mapstructure:"targets"`
-	Variables []Variable        `mapstructure:"variables"`
-	Tasks     map[string]Task   `mapstructure:"tasks"`
-	Beat      []Beat            `mapstructure:"beat"`
-	Log       Log               `mapstructure:"log"`
-	DingDing  DingDing          `mapstructure:"dingding"`
+	App       App                 `mapstructure:"app"`
+	Targets   map[string][]Target `mapstructure:"targets"`
+	Variables []Variable          `mapstructure:"variables"`
+	Tasks     map[string]Task     `mapstructure:"tasks"`
+	Beat      []Beat              `mapstructure:"beat"`
+	Log       Log                 `mapstructure:"log"`
+	DingDing  DingDing            `mapstructure:"dingding"`
 }
 
 var C Config
 
 func init() {
-	viper.SetConfigName("task_bot")
+	viper.SetConfigName("server_bot")
 	viper.AddConfigPath(".")
 	if home, err := os.UserHomeDir(); err == nil {
 		viper.AddConfigPath(home)

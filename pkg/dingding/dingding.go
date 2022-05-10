@@ -4,7 +4,8 @@ import (
 	"bot/pkg/config"
 	"bot/pkg/http_client"
 	"bot/pkg/logging"
-	"bot/pkg/talk"
+	"bot/pkg/talks"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"strconv"
@@ -132,7 +133,7 @@ func (dd DingDingAPP) check(timestamp string, sign string) int {
 }
 
 // 给钉钉发送消息，目前只能发文本信息
-func (dd DingDingAPP) ReplyMessage(text string) {
+func (dd DingDingAPP) ReplyMessage(ctx context.Context, text string) {
 	data := dd.Response(text)
 	dataJson, _ := json.Marshal(data)
 
@@ -141,14 +142,14 @@ func (dd DingDingAPP) ReplyMessage(text string) {
 		Str("text", text).
 		Msg("notify")
 
-	dhc := http_client.NewDumbHttpClient(10)
-	_, err := http_client.PostJson(dhc, dd.notifyUrl, bytes.NewBuffer(dataJson))
+	dhc := http_client.NewDumbHttpClient(10 * time.Second)
+	_, err := http_client.PostJson(ctx, dhc, dd.notifyUrl, bytes.NewBuffer(dataJson))
 	if err != nil {
 		logging.Log.Error().AnErr("err", err).Msg("notify error")
 	}
 }
 
-func DingDing(handler func(talk.TalkInterface)) gin.HandlerFunc {
+func DingDing(handler func(talks.TalkInterface)) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		ddapp := DingDingAPP{appSecret: config.C.DingDing.AppSecret}
@@ -157,7 +158,6 @@ func DingDing(handler func(talk.TalkInterface)) gin.HandlerFunc {
 		command := ddapp.GetCommand()
 
 		log := logging.Log.With().
-			Caller().
 			Str("app", "dingding").
 			Str("command", command).
 			Str("sender", senderName).
@@ -168,11 +168,11 @@ func DingDing(handler func(talk.TalkInterface)) gin.HandlerFunc {
 		sign := c.Request.Header.Get("sign")
 		if err := ddapp.check(timestamp, sign); err != 0 {
 			log.Warn().Str("timestamp", timestamp).Str("sign", sign).Int("err", err).Msg("非法操作")
-			ddapp.ReplyMessage("非法操作")
+			ddapp.ReplyMessage(context.Background(), "非法操作")
 			return
 		}
 
-		isFirst, sender, reply := talk.ContinueTaskSession(senderName, command)
+		isFirst, sender, reply := talks.ContinueTaskSession(senderName, command)
 		log.Info().Bool("isFirst", isFirst).Msg("got request")
 
 		// 开始进入任务工作

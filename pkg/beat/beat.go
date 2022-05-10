@@ -4,14 +4,15 @@ import (
 	"bot/internal/commands"
 	"bot/pkg/config"
 	"bot/pkg/logging"
-	tasks "bot/pkg/task"
+	"bot/pkg/talks"
+	"bot/pkg/tasks"
+	"context"
 	"time"
 )
 
 func eachBeatTasks() {
 
 	log := logging.Log.With().
-		Caller().
 		Str("module", "beat").
 		Logger()
 
@@ -24,13 +25,18 @@ func eachBeatTasks() {
 		if err != nil {
 			log.Error().Err(err).Msg("get task")
 		}
-		ctx := commands.Context{
-			TargetName: b.TargetName,
-			Target:     target,
-			Task:       task,
-			Log:        log,
-		}
-		go commands.TaskCommands[task.Name](ctx)
+
+		ctx := context.Background()
+		ctx = context.WithValue(ctx, talks.LoggerKey, log)
+		ctx = context.WithValue(ctx, talks.TargetKey, target)
+		ctx = context.WithValue(ctx, talks.TargetNameKey, b.TargetName)
+		ctx = context.WithValue(ctx, talks.TaskKey, task)
+		ctx, cancel := context.WithTimeout(ctx, 5*60*time.Second)
+
+		go func(ctx context.Context, cancel context.CancelFunc) {
+			defer cancel()
+			commands.TaskCommands[task.Name](ctx)
+		}(ctx, cancel)
 	}
 
 }
