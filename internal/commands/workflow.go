@@ -36,10 +36,10 @@ func (wf *WorkFlow) getNext(name string) *workStep {
 
 // 开始这个流程，参数name代表第一个步骤的名称，示例：
 //  w := newWorkFlow(ctx)
-//  w.add("start", "你好，有什么可以帮到你？", func(ctx Context, replayMsg string) string {
+//  w.add("start", "你好，有什么可以帮到你？", func(ctx Context, replyMsg string) string {
 //    return "next_step_name" // 根据返回值，跳到某个步骤
 //  })
-//  w.add("next_step_name", "还有什么可以帮到你？", func(ctx Context, replayMsg string) string {
+//  w.add("next_step_name", "还有什么可以帮到你？", func(ctx Context, replyMsg string) string {
 //    return "" // 返回空字符串，代表流程结束
 //  })
 //  resultStatus := w.start("start")
@@ -63,7 +63,7 @@ func (wf *WorkFlow) start(name string) int {
 			return 1
 		}
 		// 发送消息给客户
-		err := talks.ReplayMsg(wf.ctx, ws.msg)
+		err := talks.ReplyMsg(wf.ctx, ws.msg)
 		if err != nil {
 			logger.Error().Err(err).Msg("reply message")
 			return 2

@@ -44,8 +44,9 @@ type DingDing struct {
 }
 
 type App struct {
-	Host string `mapstructure:"host"`
-	Port int    `mapstructure:"port"`
+	Host    string `mapstructure:"host"`
+	Port    int    `mapstructure:"port"`
+	Release bool   `mapstructure:"release"`
 }
 
 type Config struct {

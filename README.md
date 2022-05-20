@@ -12,7 +12,7 @@ git clone https://github.com/xtz136/server_bot $GOPATH/src/server_bot
 2. 新建配置文件
 ```bash
 cd $GOPATH/src/server_bot
-cp configs/config.yaml.example ./config.yaml
+cp configs/config.yaml.example ./server_bot.yaml
 ```
 
 3. 安装依赖

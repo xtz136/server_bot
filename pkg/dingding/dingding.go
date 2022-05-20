@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -134,6 +135,9 @@ func (dd DingDingAPP) check(timestamp string, sign string) int {
 
 // 给钉钉发送消息，目前只能发文本信息
 func (dd DingDingAPP) ReplyMessage(ctx context.Context, text string) {
+	senderName := dd.GetSenderName()
+	text = fmt.Sprintf("@%s %s", senderName, text)
+
 	data := dd.Response(text)
 	dataJson, _ := json.Marshal(data)
 

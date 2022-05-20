@@ -10,7 +10,7 @@ import (
 func Dummy(ctx context.Context) {
 	w := newWorkFlow(ctx)
 	w.add("start", "有什么需要帮助吗？", func(ctx context.Context, replyMsg string) string {
-		err := talks.ReplayMsg(ctx, fmt.Sprintf("你回复了：%s", replyMsg))
+		err := talks.ReplyMsg(ctx, fmt.Sprintf("你回复了：%s", replyMsg))
 		if err != nil {
 			panic(err)
 		}
@@ -18,13 +18,13 @@ func Dummy(ctx context.Context) {
 	})
 	w.add("pingjia", "请为我的服务评价，回复数字1为好评，数字2为中等，数字3为差评。", func(ctx context.Context, replyMsg string) string {
 		if replyMsg == "1" {
-			talks.ReplayMsg(ctx, "本次服务好评！")
+			talks.ReplyMsg(ctx, "本次服务好评！")
 		} else if replyMsg == "2" {
-			talks.ReplayMsg(ctx, "本次服务中等！")
+			talks.ReplyMsg(ctx, "本次服务中等！")
 		} else if replyMsg == "3" {
-			talks.ReplayMsg(ctx, "本次服务差评！")
+			talks.ReplyMsg(ctx, "本次服务差评！")
 		} else {
-			talks.ReplayMsg(ctx, "回复错误，请重新回复！")
+			talks.ReplyMsg(ctx, "回复错误，请重新回复！")
 			return "pingjia"
 		}
 		return ""

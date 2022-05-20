@@ -66,7 +66,7 @@ func RestartGroup(ctx context.Context) {
 	target := ctx.Value(talks.TargetKey).([]config.Target)
 	task := ctx.Value(talks.TaskKey).(*config.Task)
 	logger := ctx.Value(talks.LoggerKey).(zerolog.Logger)
-	talks.ReplayMsg(ctx, fmt.Sprintf("开始重启%s，耐心等待", targetName))
+	talks.ReplyMsg(ctx, fmt.Sprintf("开始重启%s，耐心等待", targetName))
 
 	start := time.Now()
 	client := http_client.NewDumbHttpClient(5 * time.Second)

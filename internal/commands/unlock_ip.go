@@ -46,10 +46,10 @@ func UnlockIP(ctx context.Context) {
 	}
 
 	// 让客服选择要处理的IP
-	w.add("choose_release", query, func(ctx context.Context, replayMsg string) string {
-		i, err := strconv.Atoi(replayMsg)
+	w.add("choose_release", query, func(ctx context.Context, replyMsg string) string {
+		i, err := strconv.Atoi(replyMsg)
 		if err != nil || i >= len(keys) {
-			talks.ReplayMsg(ctx, "选择错误，请重新选择!")
+			talks.ReplyMsg(ctx, "选择错误，请重新选择!")
 			return "choose_release"
 		} else {
 			// 根据客服的选项，解封IP

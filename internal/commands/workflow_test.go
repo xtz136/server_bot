@@ -127,7 +127,7 @@ func TestWorkFlow_start(t *testing.T) {
 			2,
 		},
 		{
-			"close replay early",
+			"close reply early",
 			make_workflow(),
 			[]string{"start?", "done?"},
 			[]string{"done"},

@@ -3,6 +3,8 @@ package talks
 import (
 	"context"
 	"errors"
+	"sync"
+	"time"
 )
 
 type key int
@@ -14,6 +16,7 @@ const (
 	TargetKey
 	TaskKey
 	LoggerKey
+	Cancel
 )
 
 type TalkInterface interface {
@@ -42,19 +45,27 @@ type Session struct {
 var Sessions = []Session{}
 
 func addTalk(sender chan string, reply chan string, senderName string, command string) {
+	var mutex sync.Mutex
+	mutex.Lock()
+	defer mutex.Unlock()
 	Sessions = append(Sessions, Session{sender, reply, senderName, command})
 }
 
 func removeTalk(senderName string, command string) bool {
 	for i, talk := range Sessions {
 		if talk.SenderName == senderName && talk.Command == command {
-			// close(talk.SenderChan)
-			close(talk.ReplyChan)
+			var mutex sync.Mutex
+			mutex.Lock()
+			defer mutex.Unlock()
 
+			// 关闭 reply
+			close(talk.ReplyChan)
+			// 把talk从Sessions中删掉
 			lastLen := len(Sessions) - 1
 			Sessions[i] = Sessions[lastLen]
 			Sessions[lastLen] = talk
 			Sessions = Sessions[:lastLen]
+
 			return true
 		}
 	}
@@ -71,7 +82,7 @@ func findTalk(command string, senderName string) *Session {
 }
 
 // 给客户发送消息
-func ReplayMsg(ctx context.Context, msg string) error {
+func ReplyMsg(ctx context.Context, msg string) error {
 	sender := ctx.Value(SenderKey).(chan string)
 
 	select {
@@ -101,6 +112,8 @@ func ReceiveMsg(ctx context.Context) (string, error) {
 			return "", errors.New("reply is closed")
 		}
 		return msg, nil
+	case <-time.After(10 * time.Second):
+		return "", errors.New("talk is timeout")
 	}
 }
 
@@ -127,7 +140,7 @@ func DestoryTalkSession(senderName string, command string) {
 // 关闭整个会话/任务，允许发最后一个消息
 func MakeTalkEnd(ctx context.Context, lastMsg string) {
 	if lastMsg != "" {
-		ReplayMsg(ctx, lastMsg)
+		ReplyMsg(ctx, lastMsg)
 		// 等待消息发送完毕
 		// time.Sleep(time.Duration(1) * time.Second)
 	}
