@@ -1,4 +1,4 @@
-package tasks
+package targets
 
 import (
 	"bot/pkg/config"

@@ -1,9 +1,12 @@
 package commands
 
 import (
+	"bot/pkg/talks"
 	"context"
 	"errors"
 	"net/http"
+
+	"github.com/rs/zerolog/log"
 )
 
 type MockTimeoutError struct {
@@ -29,5 +32,9 @@ func (mhc *MockHttpClient) Fetch(req *http.Request) ([]byte, error) {
 
 func makeContext() context.Context {
 	ctx := context.Background()
+	logger := log.With().
+		Str("module", "fake").
+		Logger()
+	ctx = context.WithValue(ctx, talks.LoggerKey, logger)
 	return ctx
 }

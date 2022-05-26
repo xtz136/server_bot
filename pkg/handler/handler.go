@@ -5,7 +5,7 @@ import (
 	"bot/pkg/config"
 	"bot/pkg/logging"
 	"bot/pkg/talks"
-	"bot/pkg/tasks"
+	"bot/pkg/targets"
 	"context"
 	"strings"
 	"time"
@@ -65,7 +65,7 @@ func Handler(talk talks.TalkInterface) {
 			continue
 		}
 		targetName := command[len(taskName):]
-		if target, err := tasks.GetTarget(targetName); err != nil {
+		if target, err := targets.GetTarget(targetName); err != nil {
 			talks.MakeTalkEnd(ctx, targetName+" 这个机器没有配置，请联系管理员")
 			return
 		} else {

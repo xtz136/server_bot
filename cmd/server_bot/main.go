@@ -3,7 +3,6 @@ package main
 import (
 	"bot/pkg/beat"
 	"bot/pkg/config"
-	"bot/pkg/dingding"
 	"bot/pkg/handler"
 	"fmt"
 
@@ -12,7 +11,7 @@ import (
 
 func main() {
 	r := gin.Default()
-	r.POST("/bot/dingding/talk", dingding.DingDing(handler.Handler))
+	r.POST("/bot/dingding/talk", handler.DingDing(handler.Handler))
 
 	if len(config.C.Beat) > 0 {
 		go beat.StartBeat()

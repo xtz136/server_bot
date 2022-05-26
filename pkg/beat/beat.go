@@ -5,7 +5,7 @@ import (
 	"bot/pkg/config"
 	"bot/pkg/logging"
 	"bot/pkg/talks"
-	"bot/pkg/tasks"
+	"bot/pkg/targets"
 	"context"
 	"time"
 )
@@ -17,11 +17,11 @@ func eachBeatTasks() {
 		Logger()
 
 	for _, b := range config.C.Beat {
-		target, err := tasks.GetTarget(b.TargetName)
+		target, err := targets.GetTarget(b.TargetName)
 		if err != nil {
 			log.Error().Err(err).Msg("get target")
 		}
-		task, err := tasks.GetTask(b.TaskName)
+		task, err := targets.GetTask(b.TaskName)
 		if err != nil {
 			log.Error().Err(err).Msg("get task")
 		}

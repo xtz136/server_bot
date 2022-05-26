@@ -1,4 +1,4 @@
-package tasks
+package targets
 
 import (
 	"bot/pkg/config"
@@ -14,7 +14,12 @@ type TargetTask struct {
 }
 
 func GetTask(taskName string) (*config.Task, error) {
-	return getItem(config.C.Tasks, taskName)
+	// return getItem(config.C.Tasks, taskName)
+	if v, ok := config.C.Tasks[taskName]; ok {
+		return &v, nil
+	} else {
+		return nil, errors.New("item not found")
+	}
 }
 
 func GetTarget(targetName string) ([]config.Target, error) {
@@ -25,13 +30,13 @@ func GetTarget(targetName string) ([]config.Target, error) {
 	}
 }
 
-func getItem[M any](m map[string]M, name string) (*M, error) {
-	if v, ok := m[name]; ok {
-		return &v, nil
-	} else {
-		return nil, errors.New("item not found")
-	}
-}
+// func getItem[M any](m map[string]M, name string) (*M, error) {
+// 	if v, ok := m[name]; ok {
+// 		return &v, nil
+// 	} else {
+// 		return nil, errors.New("item not found")
+// 	}
+// }
 
 // 字符串模板替换，如果字符串中有{}，则替换为 p 中对应的值
 func formatString(format string, p map[string]string) string {
@@ -66,7 +71,7 @@ func mapTargetTask(targets []config.Target, task *config.Task, vs map[string]str
 	return targetTasks
 }
 
-// 列出指定的 target 和 task 组合，并根据 variables 替换
+// 列出指定的 target 和 task 组合，并根据 variables 替换变量
 func ListTargetTask(targets []config.Target, task *config.Task, vs *[]config.Variable) []TargetTask {
 	dict := make(map[string]string)
 	for _, v := range *vs {

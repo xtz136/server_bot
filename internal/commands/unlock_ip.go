@@ -4,7 +4,7 @@ import (
 	"bot/pkg/config"
 	"bot/pkg/http_client"
 	"bot/pkg/talks"
-	"bot/pkg/tasks"
+	"bot/pkg/targets"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -22,7 +22,7 @@ func UnlockIP(ctx context.Context) {
 	target := ctx.Value(talks.TargetKey).([]config.Target)
 	task := ctx.Value(talks.TaskKey).(*config.Task)
 	logger := ctx.Value(talks.LoggerKey).(zerolog.Logger)
-	targetTask := tasks.ListTargetTask(target, task, &config.C.Variables)
+	targetTask := targets.ListTargetTask(target, task, &config.C.Variables)
 	unlockIPUrl := targetTask[0].Command
 
 	// 获取所有被封的IP

@@ -4,7 +4,7 @@ import (
 	"bot/pkg/config"
 	"bot/pkg/http_client"
 	"bot/pkg/talks"
-	"bot/pkg/tasks"
+	"bot/pkg/targets"
 	"context"
 	"errors"
 	"os"
@@ -59,7 +59,7 @@ func CheckHealthGroup(ctx context.Context) {
 	target := ctx.Value(talks.TargetKey).([]config.Target)
 	task := ctx.Value(talks.TaskKey).(*config.Task)
 	logger := ctx.Value(talks.LoggerKey).(zerolog.Logger)
-	targetTask := tasks.ListTargetTask(target, task, &config.C.Variables)
+	targetTask := targets.ListTargetTask(target, task, &config.C.Variables)
 	beatTasksLen := len(targetTask)
 	logger.Debug().Int("count", beatTasksLen).Msg("add wait group")
 
@@ -72,7 +72,7 @@ func CheckHealthGroup(ctx context.Context) {
 	wg.Add(beatTasksLen)
 
 	for _, item := range targetTask {
-		go func(hu *healthUnit, item *tasks.TargetTask) {
+		go func(hu *healthUnit, item *targets.TargetTask) {
 			defer wg.Done()
 			checkHealth(ctx, hu, item.Check, item.Command)
 		}(hu, &item)
