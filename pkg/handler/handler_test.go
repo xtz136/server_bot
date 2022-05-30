@@ -67,7 +67,7 @@ func TestHandler(t *testing.T) {
 		// 下面测试依赖配置文件，确保 ~/server_bot.yaml 存在
 		{"call normal func", []string{"重启本地"}, "Restart", 1},
 		{"cancel talk", []string{"重启本地", "取消"}, "Restart", 1},
-		{"unloip talk", []string{"解锁ip本地"}, "UnlockIP", 1},
+		{"unlockip talk", []string{"解锁ip本地"}, "UnlockIP", 1},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
