@@ -41,14 +41,12 @@ tasks:
     name: Restart
     command: system/restart?access_token={access_token}
     check: system/live?access_token={access_token}
-  健康检查:
+  健康检查*:
     name: Health
     command: https://httpbin.org/get
     check: system/live?access_token={access_token}
-    hidden: true
-  测试:
+  测试*:
     name: Dummy
-    hidden: true
   帮助:
     name: ShowHelper
 

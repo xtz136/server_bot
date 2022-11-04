@@ -6,6 +6,7 @@ import (
 	"bot/pkg/logging"
 	"bot/pkg/talks"
 	"bot/pkg/targets"
+	"bot/pkg/websocket"
 	"context"
 	"strings"
 	"time"
@@ -65,12 +66,23 @@ func Handler(talk talks.TalkInterface) {
 			continue
 		}
 		targetName := command[len(taskName):]
-		if target, err := targets.GetTarget(targetName); err != nil {
-			talks.MakeTalkEnd(ctx, targetName+" 这个机器没有配置，请联系管理员")
-			return
+
+		// 当注册的时候，参数是机器标识符，不是名称
+		if taskName == "注册" {
+			hub := websocket.NewHub()
+			if hub.HasClient(targetName) {
+				ctx = context.WithValue(ctx, talks.TargetKey, nil)
+			}
 		} else {
-			ctx = context.WithValue(ctx, talks.TargetKey, target)
+			if target, err := targets.GetTarget(targetName); err != nil {
+				talks.MakeTalkEnd(ctx, targetName+" 这个机器没有配置，请联系管理员")
+				return
+			} else {
+				ctx = context.WithValue(ctx, talks.TargetKey, target)
+			}
 		}
+
+		// ctx = context.WithValue(ctx, talks.TargetKey, target)
 		ctx = context.WithValue(ctx, talks.TaskKey, &task)
 		ctx = context.WithValue(ctx, talks.TargetNameKey, targetName)
 		go commands.TaskCommands[task.Name](ctx)

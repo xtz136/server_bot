@@ -18,8 +18,12 @@ tmp/
 # config file
 /server_bot.json
 /server_bot.yaml
+/server_bot.yml
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
 server_bot
 .vscode
+
+# custom
+/client_alias

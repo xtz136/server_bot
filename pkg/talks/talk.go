@@ -112,7 +112,7 @@ func ReceiveMsg(ctx context.Context) (string, error) {
 			return "", errors.New("reply is closed")
 		}
 		return msg, nil
-	case <-time.After(10 * time.Second):
+	case <-time.After(30 * time.Second):
 		return "", errors.New("talk is timeout")
 	}
 }

@@ -2,6 +2,7 @@ package targets
 
 import (
 	"bot/pkg/config"
+	"bot/pkg/websocket"
 	"errors"
 	"fmt"
 	"net/url"
@@ -23,6 +24,12 @@ func GetTask(taskName string) (*config.Task, error) {
 }
 
 func GetTarget(targetName string) ([]config.Target, error) {
+	// 支持 websocket 客户端，这种不需要预先配置，所以没有 target 
+	ca := websocket.NewClientAlias()
+	if ca.Has(targetName) {
+		return nil, nil
+	}
+
 	if v, ok := config.C.Targets[targetName]; ok {
 		return v, nil
 	} else {
